@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI FinOps Platform</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #1A5276; --primary-light: #D6EAF8; --dark: #1a1a2e;
+      --surface: #16213e; --card: #0f3460; --accent: #e94560;
+      --text: #eee; --text-secondary: #94a3b8; --green: #10b981;
+      --yellow: #f59e0b; --blue: #3b82f6; --border: #334155;
+    }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; }
+
+    /* NAV */
+    nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; height: 60px; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 1.25rem; font-weight: 700; color: var(--blue); }
+    .logo span { color: var(--text); font-weight: 400; }
+    .nav-links { display: flex; gap: 1.5rem; margin-left: 3rem; }
+    .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.875rem; padding: 0.5rem 0; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); border-bottom-color: var(--blue); }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+    .status-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; display: inline-block; }
+    .nav-badge { font-size: 0.75rem; color: var(--green); background: rgba(16,185,129,0.15); padding: 0.25rem 0.75rem; border-radius: 1rem; }
+
+    /* LAYOUT */
+    .container { max-width: 1280px; margin: 0 auto; padding: 2rem; }
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .page-header p { color: var(--text-secondary); font-size: 0.9rem; }
+
+    /* KPI CARDS */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .kpi-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .kpi-value { font-size: 2rem; font-weight: 700; }
+    .kpi-change { font-size: 0.8rem; margin-top: 0.25rem; }
+    .kpi-change.up { color: var(--green); }
+    .kpi-change.down { color: var(--accent); }
+
+    /* CARDS & SECTIONS */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .card h3 { font-size: 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+
+    /* AGENT TABLE */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.75rem; border-bottom: 1px solid var(--border); }
+    td { padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+    tr:hover { background: rgba(59,130,246,0.05); }
+    .badge { padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 600; }
+    .badge-active { background: rgba(16,185,129,0.15); color: var(--green); }
+    .badge-planned { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge-l4 { background: rgba(59,130,246,0.15); color: var(--blue); }
+    .badge-l3 { background: rgba(148,163,184,0.15); color: var(--text-secondary); }
+
+    /* SIDEBAR */
+    .main-layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 60px); }
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 0; }
+    .sidebar-section { padding: 0 1rem; margin-bottom: 1.5rem; }
+    .sidebar-section h4 { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; padding: 0 0.5rem; }
+    .sidebar a { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); text-decoration: none; font-size: 0.825rem; padding: 0.4rem 0.75rem; border-radius: 6px; margin-bottom: 2px; transition: all 0.15s; cursor: pointer; }
+    .sidebar a:hover { background: rgba(59,130,246,0.1); color: var(--text); }
+    .sidebar a.active { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+    /* CHART PLACEHOLDER */
+    .chart-area { height: 200px; background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(16,185,129,0.05)); border-radius: 8px; display: flex; align-items: flex-end; padding: 1rem; gap: 4px; }
+    .chart-bar { flex: 1; background: var(--blue); border-radius: 4px 4px 0 0; opacity: 0.7; transition: opacity 0.2s; min-width: 8px; }
+    .chart-bar:hover { opacity: 1; }
+
+    /* ACTIVITY FEED */
+    .activity-item { display: flex; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .activity-text { font-size: 0.825rem; }
+    .activity-time { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.2rem; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+    .tab { padding: 0.75rem 1.25rem; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    @media (max-width: 768px) {
+      .main-layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">FinOps<span> Platform</span></div>
+    <div class="nav-links">
+      <a href="#" class="active" onclick="showPage('dashboard')">Dashboard</a>
+      <a href="#" onclick="showPage('agents')">Agents</a>
+      <a href="#" onclick="showPage('costs')">Cost Explorer</a>
+      <a href="#" onclick="showPage('settings')">Settings</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-badge"><span class="status-dot"></span> All Systems Operational</span>
+    </div>
+  </nav>
+
+  <div class="main-layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h4>Understand</h4>
+        <a class="active" onclick="showPage('dashboard')">Executive Summary</a>
+        <a onclick="showPage('costs')">Cost Explorer</a>
+        <a>Ingestion Status</a>
+        <a>Reports</a>
+        <a>Anomalies</a>
+      </div>
+      <div class="sidebar-section">
+        <h4>Quantify</h4>
+        <a>Allocations</a>
+        <a>Chargeback</a>
+        <a>Unit Economics</a>
+        <a>Benchmarking</a>
+      </div>
+      <div class="sidebar-section">
+        <h4>Optimize</h4>
+        <a>Recommendations</a>
+        <a>Workload Optimizer</a>
+        <a>Rate Optimizer</a>
+        <a>GPU Optimizer</a>
+      </div>
+      <div class="sidebar-section">
+        <h4>Manage</h4>
+        <a>Forecasts</a>
+        <a>Budgets</a>
+        <a>Governance</a>
+        <a onclick="showPage('agents')">Agent Config</a>
+      </div>
+      <div class="sidebar-section">
+        <h4>Platform</h4>
+        <a>Billing & Metering</a>
+        <a>Tenant Management</a>
+        <a onclick="showPage('settings')">Settings</a>
+      </div>
+    </aside>
+
+    <main class="container" id="main-content">
+      <!-- DASHBOARD PAGE -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h1>Executive Summary</h1>
+          <p>Platform overview — last 30 days</p>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Cloud Spend</div>
+            <div class="kpi-value" style="color: var(--blue);">$284.7K</div>
+            <div class="kpi-change up">↓ 12.3% vs last month</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Cost Savings</div>
+            <div class="kpi-value" style="color: var(--green);">$41.2K</div>
+            <div class="kpi-change up">↑ 8.1% optimization gains</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Active Agents</div>
+            <div class="kpi-value">8</div>
+            <div class="kpi-change up">5 autonomous, 3 planned</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Anomalies Detected</div>
+            <div class="kpi-value" style="color: var(--yellow);">7</div>
+            <div class="kpi-change down">3 require attention</div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Monthly Spend Trend</h3>
+            <div class="chart-area" id="spend-chart"></div>
+          </div>
+          <div class="card">
+            <h3>Recent Activity</h3>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--green)"></div><div><div class="activity-text">A05 Anomaly Detection flagged unusual EC2 spike in us-east-1</div><div class="activity-time">2 minutes ago</div></div></div>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--blue)"></div><div><div class="activity-text">A01 Data Ingestion completed AWS CUR processing (2.4M records)</div><div class="activity-time">15 minutes ago</div></div></div>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--green)"></div><div><div class="activity-text">A03 Allocation engine distributed $127K across 14 cost centers</div><div class="activity-time">1 hour ago</div></div></div>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--yellow)"></div><div><div class="activity-text">A07 Budget Guardian: Engineering team at 87% of monthly budget</div><div class="activity-time">3 hours ago</div></div></div>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--blue)"></div><div><div class="activity-text">A04 Report generated: Weekly Cost Summary for Leadership</div><div class="activity-time">5 hours ago</div></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Spend by Provider</h3>
+          <table>
+            <thead><tr><th>Provider</th><th>Services</th><th>Monthly Spend</th><th>Trend</th><th>Optimization</th></tr></thead>
+            <tbody>
+              <tr><td>AWS</td><td>EC2, S3, RDS, Lambda</td><td>$178,420</td><td style="color:var(--green)">↓ 8.2%</td><td>$28.4K saved</td></tr>
+              <tr><td>Azure</td><td>VMs, Blob, SQL</td><td>$72,180</td><td style="color:var(--accent)">↑ 3.1%</td><td>$8.7K saved</td></tr>
+              <tr><td>GCP</td><td>GKE, BigQuery, Cloud Run</td><td>$34,100</td><td style="color:var(--green)">↓ 15.4%</td><td>$4.1K saved</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AGENTS PAGE -->
+      <div id="page-agents" class="page" style="display:none">
+        <div class="page-header">
+          <h1>Agent Configuration</h1>
+          <p>32 autonomous AI agents powering your FinOps operations</p>
+        </div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab(this, 'active-agents')">Active Agents</button>
+          <button class="tab" onclick="switchTab(this, 'planned-agents')">Planned Agents</button>
+          <button class="tab" onclick="switchTab(this, 'orchestrator')">Orchestrator</button>
+        </div>
+        <div id="active-agents" class="tab-content active">
+          <div class="card">
+            <table>
+              <thead><tr><th>Agent</th><th>Name</th><th>Module</th><th>Status</th><th>Autonomy</th><th>Last Run</th></tr></thead>
+              <tbody id="agent-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="planned-agents" class="tab-content">
+          <div class="card">
+            <table>
+              <thead><tr><th>Agent</th><th>Name</th><th>Module</th><th>Status</th><th>Target</th></tr></thead>
+              <tbody id="planned-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="orchestrator" class="tab-content">
+          <div class="card">
+            <h3>A27 — Orchestrator Agent</h3>
+            <p style="color:var(--text-secondary); margin-bottom:1rem;">Central coordination hub managing inter-agent communication, task routing, and conflict resolution.</p>
+            <div class="kpi-grid">
+              <div class="kpi-card"><div class="kpi-label">Tasks Routed Today</div><div class="kpi-value">847</div></div>
+              <div class="kpi-card"><div class="kpi-label">Avg Response Time</div><div class="kpi-value">124ms</div></div>
+              <div class="kpi-card"><div class="kpi-label">Conflicts Resolved</div><div class="kpi-value">3</div></div>
+              <div class="kpi-card"><div class="kpi-label">Agent Health</div><div class="kpi-value" style="color:var(--green)">100%</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COST EXPLORER PAGE -->
+      <div id="page-costs" class="page" style="display:none">
+        <div class="page-header">
+          <h1>Cost Explorer</h1>
+          <p>Drill down into cloud spend across providers, services, and teams</p>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-label">MTD Spend</div><div class="kpi-value" style="color:var(--blue)">$284.7K</div></div>
+          <div class="kpi-card"><div class="kpi-label">Forecasted</div><div class="kpi-value">$312.4K</div></div>
+          <div class="kpi-card"><div class="kpi-label">Budget Remaining</div><div class="kpi-value" style="color:var(--green)">$65.6K</div></div>
+          <div class="kpi-card"><div class="kpi-label">Unattributed</div><div class="kpi-value" style="color:var(--yellow)">$12.3K</div></div>
+        </div>
+        <div class="card">
+          <h3>Daily Spend — Last 30 Days</h3>
+          <div class="chart-area" id="daily-chart"></div>
+        </div>
+        <div class="card" style="margin-top:1.5rem">
+          <h3>Top Services by Cost</h3>
+          <table>
+            <thead><tr><th>Service</th><th>Provider</th><th>Monthly Cost</th><th>% of Total</th><th>Trend</th></tr></thead>
+            <tbody>
+              <tr><td>EC2 Instances</td><td>AWS</td><td>$82,400</td><td>29.0%</td><td style="color:var(--green)">↓ 5.2%</td></tr>
+              <tr><td>RDS PostgreSQL</td><td>AWS</td><td>$38,200</td><td>13.4%</td><td style="color:var(--accent)">↑ 2.1%</td></tr>
+              <tr><td>Azure VMs</td><td>Azure</td><td>$34,100</td><td>12.0%</td><td style="color:var(--green)">↓ 1.8%</td></tr>
+              <tr><td>S3 Storage</td><td>AWS</td><td>$28,900</td><td>10.2%</td><td style="color:var(--accent)">↑ 8.4%</td></tr>
+              <tr><td>GKE Clusters</td><td>GCP</td><td>$21,300</td><td>7.5%</td><td style="color:var(--green)">↓ 12.1%</td></tr>
+              <tr><td>Lambda Functions</td><td>AWS</td><td>$18,700</td><td>6.6%</td><td style="color:var(--green)">↓ 3.4%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SETTINGS PAGE -->
+      <div id="page-settings" class="page" style="display:none">
+        <div class="page-header">
+          <h1>Platform Settings</h1>
+          <p>Configuration and system status</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>System Status</h3>
+            <table>
+              <tbody>
+                <tr><td>Platform Version</td><td>0.1.0 (Seed Round)</td></tr>
+                <tr><td>Database</td><td><span class="badge badge-active">Connected</span></td></tr>
+                <tr><td>Migrations Applied</td><td>24 of 24</td></tr>
+                <tr><td>Tables Created</td><td>260</td></tr>
+                <tr><td>Active Tenants</td><td>1</td></tr>
+                <tr><td>API Endpoint</td><td id="api-url" style="font-family:monospace;font-size:0.8rem;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Architecture</h3>
+            <table>
+              <tbody>
+                <tr><td>Frontend</td><td>Angular 17 + Ionic</td></tr>
+                <tr><td>Backend</td><td>Python / FastAPI</td></tr>
+                <tr><td>Database</td><td>PostgreSQL 16 (Neon)</td></tr>
+                <tr><td>Auth</td><td>AWS Cognito + JWT</td></tr>
+                <tr><td>Infrastructure</td><td>Kubernetes / Helm</td></tr>
+                <tr><td>Monitoring</td><td>Prometheus + Grafana</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_URL = 'https://ai-finops-platform.onrender.com';
+
+    const agents = [
+      { id: 'A01', name: 'Data Ingestion', module: 'Understand', status: 'active', autonomy: 'L4', lastRun: '2 min ago' },
+      { id: 'A02', name: 'Cost Normalization', module: 'Understand', status: 'active', autonomy: 'L4', lastRun: '15 min ago' },
+      { id: 'A03', name: 'Cost Allocation', module: 'Quantify', status: 'active', autonomy: 'L4', lastRun: '1 hr ago' },
+      { id: 'A04', name: 'Reporting & Analytics', module: 'Understand', status: 'active', autonomy: 'L4', lastRun: '5 hr ago' },
+      { id: 'A05', name: 'Anomaly Detection', module: 'Understand', status: 'active', autonomy: 'L4', lastRun: '2 min ago' },
+      { id: 'A27', name: 'Orchestrator', module: 'Platform', status: 'active', autonomy: 'L4', lastRun: 'Always on' },
+    ];
+
+    const planned = [
+      { id: 'A06', name: 'Forecasting', module: 'Manage', target: 'Angel Round' },
+      { id: 'A07', name: 'Budget Guardian', module: 'Manage', target: 'Angel Round' },
+      { id: 'A08', name: 'Benchmarking', module: 'Quantify', target: 'Angel Round' },
+      { id: 'A09', name: 'Unit Economics', module: 'Quantify', target: 'Angel Round' },
+      { id: 'A11', name: 'Workload Optimizer', module: 'Optimize', target: 'Series A' },
+      { id: 'A12', name: 'Rate Optimizer', module: 'Optimize', target: 'Series A' },
+      { id: 'A13', name: 'Architecture Advisor', module: 'Optimize', target: 'Series A' },
+      { id: 'A14', name: 'Sustainability', module: 'Optimize', target: 'Series B' },
+      { id: 'A16', name: 'GPU Optimizer', module: 'Optimize', target: 'Series A' },
+    ];
+
+    // Render agents table
+    document.getElementById('agent-table').innerHTML = agents.map(a => `
+      <tr>
+        <td><strong>${a.id}</strong></td>
+        <td>${a.name}</td>
+        <td>${a.module}</td>
+        <td><span class="badge badge-active">Active</span></td>
+        <td><span class="badge badge-l4">${a.autonomy}</span></td>
+        <td style="color:var(--text-secondary)">${a.lastRun}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('planned-table').innerHTML = planned.map(a => `
+      <tr>
+        <td><strong>${a.id}</strong></td>
+        <td>${a.name}</td>
+        <td>${a.module}</td>
+        <td><span class="badge badge-planned">Planned</span></td>
+        <td style="color:var(--text-secondary)">${a.target}</td>
+      </tr>
+    `).join('');
+
+    // Charts
+    function renderChart(id, count, variance) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const bars = [];
+      for (let i = 0; i < count; i++) {
+        const h = 30 + Math.random() * 70 * variance;
+        bars.push(`<div class="chart-bar" style="height:${h}%"></div>`);
+      }
+      el.innerHTML = bars.join('');
+    }
+    renderChart('spend-chart', 12, 1);
+    renderChart('daily-chart', 30, 0.8);
+
+    // Page navigation
+    function showPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+      document.getElementById('page-' + page).style.display = 'block';
+      document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    // Tab switching
+    function switchTab(btn, tabId) {
+      btn.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      btn.closest('.page').querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // Fetch API status
+    fetch(API_URL + '/api/v1/status')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('api-url').textContent = API_URL;
+      })
+      .catch(() => {
+        document.getElementById('api-url').textContent = API_URL + ' (waking up...)';
+      });
+  </script>
+</body>
+</html>
