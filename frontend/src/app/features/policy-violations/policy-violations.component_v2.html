@@ -1,0 +1,50 @@
+<!-- FinOps Platform Design System v1.1 — Updated v2 -->
+<!-- Uses: SummaryStatRowComponent | GridShellCardComponent | BulkActionBarComponent -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Policy Violations" subtitle="Open, acknowledged, and in-remediation governance policy violations with SLA tracking">
+      <div slot="actions" class="header-actions"><ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export CSV"><ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>Export</ion-button></div>
+    </app-page-header>
+
+
+    <app-summary-stat-row
+      [stats]="summaryStats()"
+      [columns]="5"
+      ariaLabel="Violation summary">
+    </app-summary-stat-row>
+
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading violations..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load violations" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter violations">
+        <div class="searchbar-wrap"><ion-searchbar placeholder="Search by policy or resource..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search violations"></ion-searchbar></div>
+        <div class="filter-chips" role="group">
+          <ion-button id="filter-viol-sev" fill="outline" color="medium"><ion-icon name="warning-outline" slot="start" aria-hidden="true"></ion-icon>Severity @if (severityFilter().length > 0) { <span class="filter-count">{{ severityFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-viol-sev" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (sv of severityOptions; track sv) { <ion-item button (click)="toggleSeverityFilter(sv)"><ion-checkbox slot="start" [checked]="severityFilter().includes(sv)" [attr.aria-label]="'Filter by ' + sv"></ion-checkbox><ion-label>{{ sv }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          <ion-button id="filter-viol-status" fill="outline" color="medium"><ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-viol-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by ' + s"></ion-checkbox><ion-label>{{ s.replace('_',' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear filters">Clear all</ion-button> }
+        </div>
+      </div>
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (sv of severityFilter(); track sv) { <ion-chip (click)="toggleSeverityFilter(sv)" [attr.aria-label]="'Remove ' + sv"><ion-label>{{ sv }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s.replace('_',' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+        </div>
+      }
+      @if (hasSelection()) {
+        <app-bulk-action-bar
+          [selectedCount]="selectionCount()"
+          [actions]="bulkActions"
+          [disabled]="isSubmitting()">
+        </app-bulk-action-bar>
+      }
+      <app-grid-shell-card [rowCount]="total()" title="violation" pluralTitle="violations" [gridOffset]="380">
+        @if (hasRows()) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="rows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[10,20,50,100]" [animateRows]="true" [rowSelection]="'multiple'" [suppressRowClickSelection]="true" (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)" (selectionChanged)="onSelectionChanged($event)" aria-label="Policy violations table"></ag-grid-angular>
+          } @else { <app-empty-state icon="shield-checkmark-outline" title="No violations match your filters" description="All policies are being followed, or adjust your filters." [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state> }
+      </app-grid-shell-card>
+    }
+  </div>
+</ion-content>

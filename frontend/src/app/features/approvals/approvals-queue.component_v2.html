@@ -1,0 +1,149 @@
+<!-- FinOps Platform Design System v1.1 — Updated v2 -->
+<!-- Uses: SummaryStatRowComponent | GridShellCardComponent | BulkActionBarComponent -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List: summary → 3-filter → bulk approve/reject → AG Grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Approvals Queue" subtitle="Agent recommendations requiring human decision — powered by Human-in-the-Loop Agent">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+      </div>
+    </app-page-header>
+
+
+    <app-summary-stat-row
+      [stats]="summaryStats()"
+      [columns]="5"
+      ariaLabel="Approval queue summary">
+    </app-summary-stat-row>
+
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading approvals..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load approvals" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter approvals">
+        <div class="searchbar-wrap"><ion-searchbar placeholder="Search by title, agent, or BU..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search approvals"></ion-searchbar></div>
+        <div class="filter-chips" role="group">
+
+          <ion-button id="filter-ap-priority" fill="outline" color="medium">
+            <ion-icon name="alert-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+            Priority @if (priorityFilter().length > 0) { <span class="filter-count">{{ priorityFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-ap-priority" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (p of priorityOptions; track p) {
+                  <ion-item button (click)="togglePriorityFilter(p)"><ion-checkbox slot="start" [checked]="priorityFilter().includes(p)" [attr.aria-label]="'Filter by priority ' + p"></ion-checkbox><ion-label>{{ p }}</ion-label></ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-ap-domain" fill="outline" color="medium">
+            <ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>
+            Domain @if (domainFilter().length > 0) { <span class="filter-count">{{ domainFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-ap-domain" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (d of domainOptions; track d) {
+                  <ion-item button (click)="toggleDomainFilter(d)"><ion-checkbox slot="start" [checked]="domainFilter().includes(d)" [attr.aria-label]="'Filter by domain ' + d"></ion-checkbox><ion-label>{{ d }}</ion-label></ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-ap-status" fill="outline" color="medium">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-ap-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s.replace('_',' ') }}</ion-label></ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button> }
+        </div>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (p of priorityFilter(); track p) { <ion-chip (click)="togglePriorityFilter(p)" [attr.aria-label]="'Remove ' + p"><ion-label>{{ p }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (d of domainFilter(); track d) { <ion-chip (click)="toggleDomainFilter(d)" [attr.aria-label]="'Remove ' + d"><ion-label>{{ d }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s.replace('_',' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+        </div>
+      }
+
+      @if (hasSelection()) {
+        <app-bulk-action-bar
+          [selectedCount]="selectionCount()"
+          [actions]="bulkActions"
+          [disabled]="isSubmitting()">
+        </app-bulk-action-bar>
+      }
+
+      <app-grid-shell-card [rowCount]="total()" title="escalation" pluralTitle="escalations" [gridOffset]="380">
+        @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10,20,50,100]"
+              [animateRows]="true"
+              [rowSelection]="'multiple'"
+              [suppressRowClickSelection]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              (selectionChanged)="onSelectionChanged($event)"
+              aria-label="Approvals queue table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="checkmark-circle-outline" title="Queue is clear" description="No escalations match your filters." [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state>
+          }
+      </app-grid-shell-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>
+
+<!-- Reject reason modal -->
+<ion-modal [isOpen]="isRejectOpen()" (didDismiss)="closeRejectModal()" [breakpoints]="[0,1]" [initialBreakpoint]="1" class="reject-modal" aria-label="Reject escalations">
+  <ng-template>
+    <div class="modal-shell">
+      <div class="modal-header">
+        <h2 class="modal-title">Reject {{ pendingRejectIds().length }} escalation{{ pendingRejectIds().length > 1 ? 's' : '' }}</h2>
+        <ion-button fill="clear" color="medium" (click)="closeRejectModal()" aria-label="Close modal"><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-button>
+      </div>
+      <form [formGroup]="rejectForm" class="reject-form" (ngSubmit)="submitReject()">
+        <div class="form-field">
+          <label class="field-label" for="reject-reason">Rejection reason <span class="required-mark" aria-hidden="true">*</span></label>
+          <ion-textarea id="reject-reason" formControlName="reason" rows="4"
+            placeholder="Provide a reason for rejection (e.g. business constraint, planned initiative, incorrect assumption)..."
+            [class.input-error]="rejectFieldError()">
+          </ion-textarea>
+          @if (rejectFieldError(); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+          <p class="field-hint">This reason is sent back to the originating agent for continuous learning.</p>
+        </div>
+        <div class="modal-footer">
+          <ion-button fill="outline" color="medium" (click)="closeRejectModal()">Cancel</ion-button>
+          <ion-button fill="solid" color="danger" type="submit" [disabled]="isSubmitting()">
+            @if (isSubmitting()) { <ion-spinner name="crescent" aria-label="Submitting"></ion-spinner> } @else { Confirm reject }
+          </ion-button>
+        </div>
+      </form>
+    </div>
+  </ng-template>
+</ion-modal>

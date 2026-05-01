@@ -1,0 +1,68 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// Ingestion Status Dashboard — tokens only, no hex literals.
+
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+
+.kpi-row { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (min-width: 576px) { grid-template-columns: repeat(2, 1fr); } @media (min-width: 992px) { grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-6); } }
+
+app-narrative-block { display: block; margin-bottom: var(--finops-space-6); }
+
+.chart-grid { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-6); margin-bottom: var(--finops-space-8); @media (min-width: 992px) { grid-template-columns: repeat(2, 1fr); } }
+
+.chart-card {
+  margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-4); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+
+.grid-card {
+  margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); }
+}
+.grid-content { padding: var(--finops-space-4) 0 0 0; }
+.finops-grid  { width: 100%; height: 340px; }
+
+:host ::ng-deep {
+  .conn-cell  { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 2px; }
+  .conn-name  { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .conn-type  { font-family: var(--finops-font-mono); font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+
+  .status-badge {
+    display: inline-flex; align-items: center; padding: 2px var(--finops-space-2);
+    border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.success { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.warning { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.danger  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+    &.neutral { background-color: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+  }
+
+  .age-ok    { color: var(--finops-success);     font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .age-warn  { color: var(--finops-warning-dark); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .age-stale { color: var(--finops-danger);       font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); }
+
+  .q-ok   { color: var(--finops-success);     font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .q-low  { color: var(--finops-warning-dark); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .q-zero { color: var(--finops-text-disabled); font-size: var(--finops-text-sm); }
+
+  .retry-pill { display: inline-flex; align-items: center; justify-content: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); }
+  .retry-zero { color: var(--finops-text-disabled); font-size: var(--finops-text-sm); }
+
+  .error-text { font-size: var(--finops-text-xs); color: var(--finops-danger); white-space: normal; line-height: var(--finops-leading-normal); }
+  .no-error   { color: var(--finops-text-disabled); font-size: var(--finops-text-sm); }
+
+  .run-btn {
+    display: inline-flex; align-items: center; gap: var(--finops-space-1);
+    padding: 2px var(--finops-space-2);
+    background-color: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary);
+    border: none; cursor: pointer; border-radius: var(--finops-radius-md);
+    font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    font-family: var(--finops-font-family);
+    transition: background-color var(--finops-duration-fast) var(--finops-easing-standard);
+    &:hover { background-color: var(--finops-brand-primary); color: var(--finops-text-inverse); }
+    &:focus-visible { outline: 2px solid var(--finops-brand-primary); outline-offset: 2px; }
+  }
+}

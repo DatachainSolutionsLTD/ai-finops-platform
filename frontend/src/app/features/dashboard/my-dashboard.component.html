@@ -1,0 +1,131 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- My Dashboard — personalised landing: greeting → quick links → KPIs → spend trend → alerts -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header [title]="greeting()" [subtitle]="subtitle()">
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading your dashboard..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load dashboard" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <!-- Quick links row -->
+      <section class="quick-links" aria-label="Quick links">
+        @for (link of dashboard()!.quickLinks; track link.route) {
+          <a [routerLink]="link.route" class="quick-link" [attr.aria-label]="link.label + (link.badge ? ' — ' + link.badge + ' items' : '')">
+            <div class="ql-icon-wrap">
+              <ion-icon [name]="link.icon" aria-hidden="true"></ion-icon>
+              @if (link.badge) { <ion-badge class="ql-badge" [attr.aria-hidden]="true">{{ link.badge }}</ion-badge> }
+            </div>
+            <span class="ql-label">{{ link.label }}</span>
+          </a>
+        }
+      </section>
+
+      <!-- KPI row -->
+      @if (kpis(); as k) {
+        <section class="kpi-row" aria-label="Key metrics">
+          <app-kpi-card
+            label="Month-to-date spend"
+            [value]="k.monthToDateSpend.value | number:'1.0-0'"
+            [unit]="k.monthToDateSpend.currency"
+            [deltaPercent]="k.monthToDateSpend.deltaPercent"
+            [deltaDirection]="k.monthToDateSpend.deltaDirection"
+            [sparklineData]="k.monthToDateSpend.sparkline"
+            status="neutral">
+          </app-kpi-card>
+          <app-kpi-card
+            label="Pending approvals"
+            [value]="k.pendingApprovals.value | number"
+            [deltaPercent]="k.pendingApprovals.deltaPercent"
+            [deltaDirection]="k.pendingApprovals.deltaDirection"
+            [sparklineData]="k.pendingApprovals.sparkline"
+            [status]="k.pendingApprovals.value > 0 ? 'warning' : 'success'"
+            actionRoute="/coordinate/approvals"
+            actionLabel="Review">
+          </app-kpi-card>
+          <app-kpi-card
+            label="Active anomalies"
+            [value]="k.activeAnomalies.value | number"
+            [deltaPercent]="k.activeAnomalies.deltaPercent"
+            [deltaDirection]="k.activeAnomalies.deltaDirection"
+            [sparklineData]="k.activeAnomalies.sparkline"
+            [status]="k.activeAnomalies.value > 0 ? 'warning' : 'success'"
+            actionRoute="/anomalies"
+            actionLabel="Investigate">
+          </app-kpi-card>
+          <app-kpi-card
+            label="Budget consumed"
+            [value]="k.budgetStatus.value + '%'"
+            [deltaPercent]="k.budgetStatus.deltaPercent"
+            [deltaDirection]="k.budgetStatus.deltaDirection"
+            [sparklineData]="k.budgetStatus.sparkline"
+            [status]="k.budgetStatus.value >= 90 ? 'danger' : k.budgetStatus.value >= 75 ? 'warning' : 'success'">
+          </app-kpi-card>
+        </section>
+      }
+
+      <!-- Spend trend chart -->
+      <ion-card class="chart-card">
+        <ion-card-header><ion-card-title>Month-to-date spend</ion-card-title></ion-card-header>
+        <ion-card-content>
+          <p class="chart-legend">
+            <span class="legend-actual">— Actual</span>
+            <span class="legend-budget">- - Budget</span>
+            <span class="legend-forecast">··· Forecast</span>
+          </p>
+          <apx-chart
+            [series]="spendSeries()"
+            [chart]="spendChart"
+            [xaxis]="spendXAxis()"
+            [yaxis]="spendYAxis"
+            [stroke]="spendStroke"
+            [fill]="spendFill"
+            [colors]="spendColors"
+            [tooltip]="spendTooltip"
+            [dataLabels]="spendDataLabels"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }"
+            [legend]="{ show: false }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Alerts card -->
+      <ion-card class="alerts-card">
+        <ion-card-header>
+          <ion-card-title>
+            Alerts &amp; actions
+            <span class="alert-count" aria-label="{{ dashboard()!.alerts.length }} alerts">{{ dashboard()!.alerts.length }}</span>
+          </ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="alerts-body">
+          @if (dashboard()!.alerts.length > 0) {
+            <ul class="alert-list" aria-label="Active alerts">
+              @for (alert of dashboard()!.alerts; track alert.id) {
+                <li class="alert-item">
+                  <div class="alert-severity-bar" [class]="alertSeverityClass(alert.severity)" aria-hidden="true"></div>
+                  <div class="alert-content">
+                    <div class="alert-meta">
+                      <span class="alert-type-badge" [class]="'type-' + alert.type">{{ alert.type }}</span>
+                      <span class="alert-sev" [class]="alertSeverityClass(alert.severity)">{{ alert.severity }}</span>
+                      <span class="alert-age">{{ alertAge(alert.createdAt) }}</span>
+                    </div>
+                    <p class="alert-message">{{ alert.message }}</p>
+                  </div>
+                  <a [routerLink]="alert.route" class="alert-cta" [attr.aria-label]="'Go to ' + alert.type + ' — ' + alert.message">
+                    <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+                  </a>
+                </li>
+              }
+            </ul>
+          } @else {
+            <app-empty-state icon="checkmark-circle-outline" title="No active alerts" description="You're all caught up."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

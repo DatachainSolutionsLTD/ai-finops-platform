@@ -1,0 +1,13 @@
+// FinOps Platform Design System v1.1 — Updated v2
+// Shared library partials now imported via global styles.scss:
+//   @use 'styles/page-container'  — :host, .page-container, .header-actions
+//   @use 'styles/list-chrome'     — .summary-row, .filter-toolbar, .grid-card, .bulk-action-bar
+//   @use 'styles/ag-grid-cells'   — all ::ng-deep cell renderer styles
+//   @use 'styles/modals'          — .modal-shell, .action-footer
+// Only screen-specific overrides remain below.
+// ─────────────────────────────────────────────────────────────────────────────
+:host ::ng-deep {
+  .rec-cell  { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 2px; }
+  .rec-name  { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .rec-meta  { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+}

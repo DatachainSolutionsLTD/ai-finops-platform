@@ -1,0 +1,94 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- List: summary → 3 filters → AG Grid with util bar, compliance, contract, AHB columns -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="License & SaaS" subtitle="License entitlement inventory, SaaS seat utilisation, BYOL/AHB detection, and compliance monitoring">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+      </div>
+    </app-page-header>
+
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="License summary">
+        <div class="summary-stat"><div class="summary-label">License spend</div><div class="summary-value">{{ s.totalLicenseSpend | number:'1.0-0' }} {{ s.currency }}</div></div>
+        <div class="summary-stat"><div class="summary-label">SaaS spend</div><div class="summary-value">{{ s.totalSaasSpend | number:'1.0-0' }} {{ s.currency }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Waste identified</div><div class="summary-value" [class.summary-value-warning]="s.totalWaste > 0">{{ s.totalWaste | number:'1.0-0' }} {{ s.currency }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Compliance score</div><div class="summary-value" [class.summary-value-danger]="s.complianceScore < 70" [class.summary-value-warning]="s.complianceScore < 90 && s.complianceScore >= 70">{{ s.complianceScore }}/100</div></div>
+        <div class="summary-stat"><div class="summary-label">AHB coverage</div><div class="summary-value" [class.summary-value-warning]="s.ahbCoverageRate < 80">{{ s.ahbCoverageRate | number:'1.1-1' }}%</div></div>
+      </section>
+    }
+
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading license data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load licenses" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter licenses">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search by vendor or product..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search licenses"></ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group">
+
+          <ion-button id="filter-lic-compliance" fill="outline" color="medium">
+            <ion-icon name="shield-checkmark-outline" slot="start" aria-hidden="true"></ion-icon>
+            Compliance @if (complianceFilter().length > 0) { <span class="filter-count">{{ complianceFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-lic-compliance" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (c of complianceOptions; track c) {
+                  <ion-item button (click)="toggleComplianceFilter(c)">
+                    <ion-checkbox slot="start" [checked]="complianceFilter().includes(c)" [attr.aria-label]="'Filter ' + c"></ion-checkbox>
+                    <ion-label>{{ c.replace(/_/g,' ') }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-lic-group" fill="outline" color="medium">
+            <ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>
+            Group @if (groupFilter().length > 0) { <span class="filter-count">{{ groupFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-lic-group" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (g of groupOptions; track g) {
+                  <ion-item button (click)="toggleGroupFilter(g)">
+                    <ion-checkbox slot="start" [checked]="groupFilter().includes(g)" [attr.aria-label]="'Filter ' + g"></ion-checkbox>
+                    <ion-label>{{ g.replace('_',' ') }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button> }
+        </div>
+      </div>
+
+      @if (hasFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (c of complianceFilter(); track c) { <ion-chip (click)="toggleComplianceFilter(c)" [attr.aria-label]="'Remove ' + c"><ion-label>{{ c.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (g of groupFilter(); track g) { <ion-chip (click)="toggleGroupFilter(g)" [attr.aria-label]="'Remove ' + g"><ion-label>{{ g.replace('_',' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+        </div>
+      }
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title class="grid-title">{{ total() | number }} entitlement{{ total() !== 1 ? 's' : '' }}</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="rows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[10,20,50,100]" [animateRows]="true" (gridReady)="onGridReady($event)" aria-label="License entitlements table"></ag-grid-angular>
+          } @else {
+            <app-empty-state icon="pricetag-outline" title="No licenses match your filters" description="Try adjusting your search or filter criteria." [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

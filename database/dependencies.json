@@ -1,0 +1,459 @@
+{
+  "platform": "FinOps Agentic Platform",
+  "total_migrations": 25,
+  "total_tables": 260,
+  "application_order_critical": true,
+  "notes": "Migrations MUST be applied in numerical order. V011 requires seed data in tenant/auth_user/agent_identity tables before running.",
+
+  "migrations": [
+    {
+      "id": "V001",
+      "name": "Seed Agent A01 — Data Ingestion",
+      "tables": 5,
+      "depends_on": [],
+      "seeds_tables": ["ingestion_run_log", "ingestion_connector", "raw_cost_record"],
+      "downstream_consumers": ["V002", "V005", "V008", "V018", "V024"],
+      "notes": "Foundational — no dependencies. Consumed by normalization, anomaly detection, billing, chargeback."
+    },
+    {
+      "id": "V002",
+      "name": "Seed Agent A02 — Cost Normalization",
+      "tables": 4,
+      "depends_on": ["V001"],
+      "seeds_tables": ["normalized_cost_record", "normalization_run_log", "service_taxonomy_mapping"],
+      "downstream_consumers": ["V003", "V012", "V018"],
+      "fk_targets_in_prior_migrations": ["raw_cost_record (V001)"]
+    },
+    {
+      "id": "V003",
+      "name": "Seed Agent A03 — Cost Allocation",
+      "tables": 4,
+      "depends_on": ["V002"],
+      "seeds_tables": ["allocation_rule", "allocated_cost_record", "shared_service_pool", "allocation_run_log"],
+      "downstream_consumers": ["V004", "V012", "V018"],
+      "fk_targets_in_prior_migrations": ["normalized_cost_record (V002)"]
+    },
+    {
+      "id": "V004",
+      "name": "Seed Agent A04 — Reporting & Analytics",
+      "tables": 4,
+      "depends_on": ["V003"],
+      "seeds_tables": ["report_definition", "report_generation_log", "nl_query_log", "proactive_insight"]
+    },
+    {
+      "id": "V005",
+      "name": "Seed Agent A05 — Anomaly Detection",
+      "tables": 4,
+      "depends_on": ["V003"],
+      "seeds_tables": ["anomaly_detection_run", "anomaly_record", "anomaly_lifecycle_transition", "suppression_rule"],
+      "consumed_by": ["V017 orchestrator references"]
+    },
+    {
+      "id": "V006",
+      "name": "Batch 1 — Metering Foundation (MTR-01)",
+      "tables": 11,
+      "depends_on": [],
+      "introduces_critical_refs": ["ref_currency", "platform_config"],
+      "critical_note": "Introduces ref_currency — every monetary column in ALL subsequent migrations FKs here. Must be applied and seeded with currency codes before V007-V024."
+    },
+    {
+      "id": "V007",
+      "name": "Batch 2 — Self-Managing Metering (ME-01)",
+      "tables": 12,
+      "depends_on": ["V006"],
+      "fk_targets_in_prior_migrations": ["ref_currency"]
+    },
+    {
+      "id": "V008",
+      "name": "Batch 3 — Billing Engine Part A (B01-B04)",
+      "tables": 12,
+      "depends_on": ["V006", "V007"],
+      "fk_targets_in_prior_migrations": ["ref_currency", "mtr_agent_activity_record"],
+      "logical_integration": "CDRs reference AAR entries from V006 via aar_id"
+    },
+    {
+      "id": "V009",
+      "name": "Batch 4 — Billing Engine Part B (B05-B07 + Tax/Dunning/RevRec)",
+      "tables": 16,
+      "depends_on": ["V008"],
+      "fk_targets_in_prior_migrations": ["ref_currency", "be_subscription (V008)", "be_invoice (V008)", "be_pulse_pack (V008)"]
+    },
+    {
+      "id": "V010",
+      "name": "Wave 1 — Multi-Tenancy & Agent Identity Foundation (MT-01/A31)",
+      "tables": 19,
+      "depends_on": ["V006"],
+      "critical_note": "THE CANONICAL FK TARGET for tenant_id, auth_user.user_id, agent_identity.agent_id used by every subsequent migration AND backfilled into V001-V009 via V011.",
+      "introduces_critical_refs": ["tenant", "auth_user", "agent_identity", "auth_role", "tenant_tier"]
+    },
+    {
+      "id": "V011",
+      "name": "FK Constraint Backfill",
+      "tables": 0,
+      "constraints_added": 75,
+      "depends_on": ["V010"],
+      "critical_note": "MUST have seed data in tenant, auth_user, agent_identity populated with UUIDs matching existing V001-V009 data BEFORE running. Without seed data, FK constraint validation will fail.",
+      "deployment_procedure": [
+        "1. Apply V006 → V010 in order",
+        "2. Seed ref_currency with ISO 4217 currency codes",
+        "3. Seed tenant_tier with tier definitions (Starter/Professional/Enterprise etc.)",
+        "4. Seed tenant table with UUIDs matching all tenant_id values in V001-V009 data",
+        "5. Seed auth_user with UUIDs matching all created_by/approved_by values",
+        "6. Seed agent_identity with UUIDs matching all agent_id values",
+        "7. Apply V011 — FK constraints will validate against seed data"
+      ]
+    },
+    {
+      "id": "V012",
+      "name": "Wave 2a — A06 Forecasting + A07 Budget Guardian",
+      "tables": 13,
+      "depends_on": ["V010"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "ref_currency"]
+    },
+    {
+      "id": "V013",
+      "name": "Wave 2b — A08 Benchmarking + A09 Unit Economics",
+      "tables": 11,
+      "depends_on": ["V010"],
+      "introduces_critical_refs": ["bm_peer_cohort"],
+      "consumed_by": ["V024 via asm_cohort_comparison.cohort_id"]
+    },
+    {
+      "id": "V014",
+      "name": "Wave 2c — A20 Governance + A23 Onboarding + A24 Tagging",
+      "tables": 17,
+      "depends_on": ["V010"],
+      "introduces_critical_refs": ["gov_severity (enum)", "gov_policy_scope (enum)"],
+      "critical_note": "gov_severity enum reused by V015-V023. gov_policy_scope reused by V015, V017, V019, V020."
+    },
+    {
+      "id": "V015",
+      "name": "Wave 3a — A11 Workload + A12 Rate + A13 Architecture Optimizer",
+      "tables": 13,
+      "depends_on": ["V010", "V014"],
+      "introduces_critical_refs": ["opt_recommendation_status (enum)", "opt_confidence_level (enum)", "opt_priority_tier (enum)", "opt_performance_impact (enum)"],
+      "critical_note": "Establishes shared Optimize pattern. The 4 opt_* enums reused across V016, V017, V018, V019, V020, V024.",
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "agent_identity", "ref_currency", "gov_severity enum"]
+    },
+    {
+      "id": "V016",
+      "name": "Wave 3b — A14 Sustainability + A15 License/SaaS + A16 GPU",
+      "tables": 14,
+      "depends_on": ["V010", "V014", "V015"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "agent_identity", "ref_currency", "opt_* enums (V015)"]
+    },
+    {
+      "id": "V017",
+      "name": "Wave 3c — A17 Container + A18 Network + A19 Storage",
+      "tables": 13,
+      "depends_on": ["V010", "V014", "V015"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "ref_currency", "gov_severity", "opt_* enums"]
+    },
+    {
+      "id": "V018",
+      "name": "Wave 4a — A22 Chargeback + A25 Education",
+      "tables": 13,
+      "depends_on": ["V010", "V015"],
+      "logical_integration": "Chargeback line items reference allocated_cost_record (V003) and be_charge_detail_record (V008) via UUID arrays",
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "ref_currency", "opt_priority_tier"]
+    },
+    {
+      "id": "V019",
+      "name": "Wave 4b — A28 Conflict + A29 Explainability + A30 HITL",
+      "tables": 12,
+      "depends_on": ["V010", "V014", "V015"],
+      "critical_note": "Agent coordination layer — cross-references all other agents via source_entity_type + source_entity_id generic pointer pattern.",
+      "cross_agent_integration": [
+        "cr_resolution_decision.hl_task_id → hl_task (same migration)",
+        "hl_task.narrative_id → ex_narrative (same migration)",
+        "ex_reasoning_chain.source_entity_type + source_entity_id → ANY agent's entities"
+      ]
+    },
+    {
+      "id": "V020",
+      "name": "Wave 4c — A26 Intersecting Disciplines + A32 Continuous Learning",
+      "tables": 12,
+      "depends_on": ["V010", "V012", "V014", "V019"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "agent_identity", "gov_severity", "forecast_drift_severity (V012)", "agent_autonomy_level (V010)"]
+    },
+    {
+      "id": "V021",
+      "name": "Wave 5a — AP-01 Notification Hub + Integration Hub",
+      "tables": 11,
+      "depends_on": ["V010", "V014"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "auth_role", "ref_currency", "gov_severity"]
+    },
+    {
+      "id": "V022",
+      "name": "Wave 5b — AP-01 Feature Flags + Support + Platform Settings",
+      "tables": 13,
+      "depends_on": ["V010", "V014", "V015"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "gov_severity", "opt_priority_tier"]
+    },
+    {
+      "id": "V023",
+      "name": "Wave 5c — AP-01 Data Lifecycle + Audit + DSR/GDPR",
+      "tables": 9,
+      "depends_on": ["V010", "V014", "V015"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "agent_identity", "gov_severity", "opt_priority_tier"],
+      "critical_note": "au_audit_event is the unified cross-agent audit table. All agent-specific audit columns logically aggregate here."
+    },
+    {
+      "id": "V024",
+      "name": "A21 Assessment Agent",
+      "tables": 12,
+      "depends_on": ["V010", "V013", "V015"],
+      "fk_targets_in_prior_migrations": ["tenant", "auth_user", "agent_identity", "ref_currency", "bm_peer_cohort (V013)", "opt_confidence_level", "opt_priority_tier"]
+    }
+  ],
+
+  "canonical_fk_targets": {
+    "tenant.tenant_id": {
+      "defined_in": "V010",
+      "referenced_by_table_count": 185,
+      "backfilled_by": "V011"
+    },
+    "auth_user.user_id": {
+      "defined_in": "V010",
+      "referenced_by_table_count": 145,
+      "backfilled_by": "V011"
+    },
+    "agent_identity.agent_id": {
+      "defined_in": "V010",
+      "referenced_by_table_count": 28,
+      "backfilled_by": "V011"
+    },
+    "auth_role.role_id": {
+      "defined_in": "V010",
+      "referenced_by_table_count": 12
+    },
+    "ref_currency.currency_id": {
+      "defined_in": "V006",
+      "referenced_by_table_count": 112,
+      "note": "Every monetary amount column pairs with currency_id FK"
+    },
+    "bm_peer_cohort.cohort_id": {
+      "defined_in": "V013",
+      "referenced_by_table_count": 3,
+      "consumers": ["bm_cohort_membership", "bm_cohort_statistic", "asm_cohort_comparison (V024)"]
+    }
+  },
+
+  "shared_enums_reused_across_migrations": {
+    "gov_severity": {
+      "defined_in": "V014",
+      "reused_by": ["V015", "V016", "V017", "V018", "V019", "V020", "V021", "V022", "V023"],
+      "values": ["Informational", "Low", "Medium", "High", "Critical"]
+    },
+    "gov_policy_scope": {
+      "defined_in": "V014",
+      "reused_by": ["V015", "V017", "V019", "V020"]
+    },
+    "opt_recommendation_status": {
+      "defined_in": "V015",
+      "reused_by": ["V016", "V017", "V018"],
+      "purpose": "Shared lifecycle for all 9 Optimize agent recommendations"
+    },
+    "opt_confidence_level": {
+      "defined_in": "V015",
+      "reused_by": ["V016", "V017", "V018", "V019", "V024"]
+    },
+    "opt_priority_tier": {
+      "defined_in": "V015",
+      "reused_by": ["V016", "V017", "V018", "V019", "V020", "V021", "V022", "V023", "V024"]
+    },
+    "opt_performance_impact": {
+      "defined_in": "V015",
+      "reused_by": ["V016", "V017"]
+    },
+    "agent_autonomy_level": {
+      "defined_in": "V010",
+      "reused_by": ["V019", "V020"]
+    },
+    "forecast_drift_severity": {
+      "defined_in": "V012",
+      "reused_by": ["V020"]
+    }
+  },
+
+  "deployment_phases": [
+    {
+      "phase": 1,
+      "name": "Foundation Stack",
+      "migrations": ["V006", "V007", "V008", "V009"],
+      "purpose": "Establish currency reference table and Metering/Billing engines"
+    },
+    {
+      "phase": 2,
+      "name": "Seed Agent Stack",
+      "migrations": ["V001", "V002", "V003", "V004", "V005"],
+      "purpose": "Core Seed agents — can be applied in parallel with Phase 1",
+      "note": "Originally generated first; in practice can be applied before or after Phase 1 since no FK dependencies between Seed and Metering until V011 backfill"
+    },
+    {
+      "phase": 3,
+      "name": "Identity Foundation",
+      "migrations": ["V010"],
+      "purpose": "Multi-tenancy, user, agent identity — the canonical FK targets",
+      "requires_seed_data_after": ["tenant records matching all existing tenant_ids", "auth_user records for all audit column values", "agent_identity records for all agent_ids"]
+    },
+    {
+      "phase": 4,
+      "name": "Referential Integrity Backfill",
+      "migrations": ["V011"],
+      "purpose": "Add FK constraints to V001-V009 tables pointing at V010 foundation",
+      "blocking_condition": "Requires seed data from Phase 3 suffix to be populated"
+    },
+    {
+      "phase": 5,
+      "name": "Quantify + Governance Wave",
+      "migrations": ["V012", "V013", "V014"],
+      "purpose": "A06-A09 + A20, A23, A24"
+    },
+    {
+      "phase": 6,
+      "name": "Optimize Wave",
+      "migrations": ["V015", "V016", "V017"],
+      "purpose": "A11-A19 (9 Optimize agents)",
+      "intra_wave_dependency": "V015 defines shared opt_* enums; V016 and V017 require V015"
+    },
+    {
+      "phase": 7,
+      "name": "Manage Wave",
+      "migrations": ["V018", "V019", "V020"],
+      "purpose": "A22, A25, A26, A28-A30, A32"
+    },
+    {
+      "phase": 8,
+      "name": "Admin Portal Wave",
+      "migrations": ["V021", "V022", "V023"],
+      "purpose": "AP-01 Unified Administration Portal net-new consolidation entities"
+    },
+    {
+      "phase": 9,
+      "name": "Assessment Capability",
+      "migrations": ["V024"],
+      "purpose": "A21 FinOps Maturity Assessment"
+    }
+  ],
+
+  "cross_agent_integration_points": [
+    {
+      "producer": "A01 Data Ingestion (V001)",
+      "consumer": "A02 Cost Normalization (V002)",
+      "integration": "normalized_cost_record.raw_cost_id → raw_cost_record.raw_cost_id"
+    },
+    {
+      "producer": "A02 Cost Normalization (V002)",
+      "consumer": "A03 Cost Allocation (V003)",
+      "integration": "allocated_cost_record references normalized_cost_record"
+    },
+    {
+      "producer": "A03 Cost Allocation (V003)",
+      "consumers": ["A04 Reporting (V004)", "A05 Anomaly Detection (V005)", "A07 Budget Guardian (V012)", "A22 Chargeback (V018)"],
+      "integration": "Allocated cost records are the primary source for all downstream cost analysis"
+    },
+    {
+      "producer": "MTR-01 Metering (V006)",
+      "consumer": "BE-01 Billing (V008)",
+      "integration": "be_charge_detail_record.aar_id → mtr_agent_activity_record.aar_id"
+    },
+    {
+      "producer": "A05 Anomaly Detection (V005)",
+      "consumer": "A06 Forecasting (V012)",
+      "integration": "Confirmed anomalies trigger forecast re-generation per FSD FC-007"
+    },
+    {
+      "producer": "A06 Forecasting (V012)",
+      "consumer": "A07 Budget Guardian (V012)",
+      "integration": "Budget state uses forecast points for projected exhaustion date"
+    },
+    {
+      "producer": "A11-A19 Optimize agents (V015-V017)",
+      "consumer": "A28 Conflict Resolution (V019)",
+      "integration": "Conflicting recommendations from multiple optimizers flow to cr_conflict.conflicting_entity_refs JSONB"
+    },
+    {
+      "producer": "Any agent action (V001-V024)",
+      "consumer": "A29 Explainability (V019)",
+      "integration": "ex_reasoning_chain.source_entity_type + source_entity_id generic pointer"
+    },
+    {
+      "producer": "Any agent escalation (V001-V024)",
+      "consumer": "A30 HITL (V019)",
+      "integration": "hl_task.source_entity_type + source_entity_id; hl_task.narrative_id → ex_narrative"
+    },
+    {
+      "producer": "A20 Governance (V014)",
+      "consumer": "A24 Tagging (V014)",
+      "integration": "A24 is a specialized sub-agent of A20; shares gov_severity and gov_policy_scope enums"
+    },
+    {
+      "producer": "A22 Chargeback (V018)",
+      "sources": ["A03 Allocation (V003) via source_allocation_ids", "B02 Billing CDRs (V008) via source_cdr_ids"],
+      "integration": "Statement line items trace back to raw allocation and rating records"
+    },
+    {
+      "producer": "A26 Intersecting Disciplines (V020)",
+      "consumer": "A28 Conflict Resolution (V019)",
+      "integration": "id_workflow_conflict.a28_conflict_id → cr_conflict"
+    },
+    {
+      "producer": "All agents with models (V005, V012, V013, V017-V020, V024)",
+      "consumer": "A32 Continuous Learning (V020)",
+      "integration": "cl_model_registry tracks all agent model versions; cl_feedback_signal captures human responses to any agent's output"
+    },
+    {
+      "producer": "All agents (V001-V024)",
+      "consumer": "AP-01 Audit (V023)",
+      "integration": "au_audit_event aggregates events from every domain via event_category + actor_type + target_entity_type"
+    },
+    {
+      "producer": "AP-01 Platform Settings (V022)",
+      "consumers": ["ALL agents"],
+      "integration": "ps_setting_value provides hierarchical config (Platform Default → Tenant Override → User Override → Environment Override) replacing hardcoded agent settings"
+    }
+  ],
+
+  "partitioned_tables": [
+    {"table": "mtr_agent_activity_record", "migration": "V006", "partition_key": "operation_end_ts", "strategy": "monthly range"},
+    {"table": "mtr_pulse_ledger_entry", "migration": "V006", "partition_key": "posted_at", "strategy": "monthly range"},
+    {"table": "be_charge_detail_record", "migration": "V008", "partition_key": "rated_at", "strategy": "monthly range"},
+    {"table": "be_wallet_transaction", "migration": "V009", "partition_key": "posted_at", "strategy": "monthly range"},
+    {"table": "fc_forecast_point", "migration": "V012", "partition_key": "forecast_date", "strategy": "monthly range"},
+    {"table": "ue_transaction_volume", "migration": "V013", "partition_key": "period_start", "strategy": "monthly range"},
+    {"table": "su_emission_measurement", "migration": "V016", "partition_key": "measurement_period_start", "strategy": "monthly range"},
+    {"table": "go_utilization_metric", "migration": "V016", "partition_key": "measurement_timestamp", "strategy": "monthly range"},
+    {"table": "nt_transfer_measurement", "migration": "V017", "partition_key": "measurement_period_start", "strategy": "monthly range"},
+    {"table": "ntf_delivery_log", "migration": "V021", "partition_key": "queued_at", "strategy": "monthly range"},
+    {"table": "ih_webhook_delivery", "migration": "V021", "partition_key": "queued_at", "strategy": "monthly range"},
+    {"table": "au_audit_event", "migration": "V023", "partition_key": "occurred_at", "strategy": "monthly range"}
+  ],
+
+  "risks_and_gotchas": [
+    {
+      "issue": "V011 FK backfill fails on empty foundation",
+      "mitigation": "Populate tenant/auth_user/agent_identity seed data before running V011"
+    },
+    {
+      "issue": "ref_currency must exist before applying V007+",
+      "mitigation": "Seed ref_currency with ISO 4217 codes as part of V006 post-migration script"
+    },
+    {
+      "issue": "Partitioned tables need ongoing partition creation",
+      "mitigation": "Use pg_partman or scheduled job to create next month partitions. V006-V023 only create partitions for 2026-07 and 2026-08 as examples"
+    },
+    {
+      "issue": "RLS policies require app.current_tenant_id session variable",
+      "mitigation": "Application layer must SET app.current_tenant_id before every query, typically in middleware"
+    },
+    {
+      "issue": "Platform_Admin users need RLS bypass",
+      "mitigation": "Use app.is_platform_admin session variable or superuser role for cross-tenant queries"
+    },
+    {
+      "issue": "Cross-migration enum dependencies (opt_* from V015, gov_* from V014) require strict ordering",
+      "mitigation": "Flyway/Liquibase numerical ordering enforces this; do not skip migrations"
+    }
+  ]
+}

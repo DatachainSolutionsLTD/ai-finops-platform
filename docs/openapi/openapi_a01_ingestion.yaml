@@ -1,0 +1,622 @@
+openapi: 3.1.0
+info:
+  title: Data Ingestion Agent API (A01)
+  description: |
+    REST API for the Data Ingestion Agent — manages data source connectors,
+    ingestion pipeline runs, manual uploads, rate cards, and health monitoring.
+    Domain: Ingestion. Seed Round scope (AWS only, single-tenant).
+  version: 1.0.0
+  contact:
+    name: FinOps Platform Engineering
+  license:
+    name: Proprietary
+
+servers:
+  - url: /api/v1/ingestion
+    description: Ingestion domain base path
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Connectors
+    description: Data source connector CRUD and health
+  - name: Ingestion Runs
+    description: Pipeline execution monitoring and control
+  - name: Manual Upload
+    description: Manual CSV/file cost ingestion
+  - name: Rate Cards
+    description: On-premises rate card management
+  - name: Health
+    description: Pipeline health and data quality
+
+paths:
+  # -------------------------------------------------------------------------
+  # CONNECTORS
+  # -------------------------------------------------------------------------
+  /connectors:
+    get:
+      tags: [Connectors]
+      summary: List data source connectors
+      operationId: listConnectors
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: source_type
+          in: query
+          schema: { type: string, enum: [AWS, Azure, GCP, OCI, VMware, Kubernetes,
+                    OpenShift, OpenStack, GPU_DCGM, ERP, ITSM, CMDB, Manual] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [Healthy, Degraded, Failed, Pending] }
+        - name: is_active
+          in: query
+          schema: { type: boolean, default: true }
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/SortBy'
+      responses:
+        '200':
+          description: Paginated list of connectors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorListResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Connectors]
+      summary: Create a new data source connector
+      operationId: createConnector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectorCreateRequest'
+      responses:
+        '201':
+          description: Connector created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connector'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Connector name already exists for tenant
+
+  /connectors/{connector_id}:
+    parameters:
+      - $ref: '#/components/parameters/ConnectorId'
+    get:
+      tags: [Connectors]
+      summary: Get connector details
+      operationId: getConnector
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connector'
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Connectors]
+      summary: Update connector configuration
+      operationId: updateConnector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectorUpdateRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connector'
+    delete:
+      tags: [Connectors]
+      summary: Delete a connector
+      operationId: deleteConnector
+      responses:
+        '204': { description: Connector deleted }
+
+  /connectors/{connector_id}/test:
+    post:
+      tags: [Connectors]
+      summary: Test connector connectivity and credential validity
+      operationId: testConnector
+      parameters:
+        - $ref: '#/components/parameters/ConnectorId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [Success, Failed] }
+                  latency_ms: { type: integer }
+                  schema_summary:
+                    type: object
+                    properties:
+                      tables_discovered: { type: integer }
+                      estimated_row_count: { type: integer }
+                  error_detail: { type: string }
+
+  /connectors/{connector_id}/trigger:
+    post:
+      tags: [Connectors]
+      summary: Trigger on-demand ingestion run
+      operationId: triggerIngestion
+      parameters:
+        - $ref: '#/components/parameters/ConnectorId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                billing_period:
+                  type: string
+                  format: date
+                  description: Optional billing period override
+      responses:
+        '202':
+          description: Ingestion run queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run_id: { type: string, format: uuid }
+                  status: { type: string, const: Running }
+
+  # -------------------------------------------------------------------------
+  # INGESTION RUNS
+  # -------------------------------------------------------------------------
+  /runs:
+    get:
+      tags: [Ingestion Runs]
+      summary: List ingestion pipeline runs
+      operationId: listRuns
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: connector_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string, enum: [Running, Completed, Partial, Failed, Quarantined] }
+        - name: start_after
+          in: query
+          schema: { type: string, format: date-time }
+        - name: start_before
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunListResponse'
+
+  /runs/{run_id}:
+    get:
+      tags: [Ingestion Runs]
+      summary: Get ingestion run details with reconciliation
+      operationId: getRun
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionRun'
+
+  # -------------------------------------------------------------------------
+  # MANUAL UPLOAD
+  # -------------------------------------------------------------------------
+  /upload:
+    post:
+      tags: [Manual Upload]
+      summary: Upload CSV/XLSX for manual cost ingestion
+      operationId: uploadCostFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, upload_type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                upload_type:
+                  type: string
+                  enum: [Cost_Entry, Rate_Card_Update, Adjustment_Entry, Reconciliation]
+                billing_period:
+                  type: string
+                  format: date
+                notes:
+                  type: string
+                  maxLength: 500
+      responses:
+        '202':
+          description: File accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_id: { type: string, format: uuid }
+                  run_id: { type: string, format: uuid }
+                  status: { type: string, const: Processing }
+                  records_detected: { type: integer }
+        '400':
+          description: Invalid file format or template mismatch
+
+  /upload/template/{upload_type}:
+    get:
+      tags: [Manual Upload]
+      summary: Download upload template
+      operationId: getUploadTemplate
+      parameters:
+        - name: upload_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [Cost_Entry, Rate_Card_Update, Adjustment_Entry, Reconciliation]
+      responses:
+        '200':
+          description: CSV/XLSX template file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  # -------------------------------------------------------------------------
+  # RATE CARDS
+  # -------------------------------------------------------------------------
+  /rate-cards:
+    get:
+      tags: [Rate Cards]
+      summary: List rate cards for tenant
+      operationId: listRateCards
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: resource_type
+          in: query
+          schema: { type: string, enum: [Compute, Memory, Storage, GPU, License, Network, Facility] }
+        - name: effective_date
+          in: query
+          schema: { type: string, format: date }
+          description: Return rates effective on this date
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateCardListResponse'
+
+    post:
+      tags: [Rate Cards]
+      summary: Create or update a rate card entry
+      operationId: upsertRateCard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateCardRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateCard'
+
+  # -------------------------------------------------------------------------
+  # HEALTH & QUALITY
+  # -------------------------------------------------------------------------
+  /health/summary:
+    get:
+      tags: [Health]
+      summary: Get ingestion health summary (dashboard cards)
+      operationId: getHealthSummary
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_connectors: { type: integer }
+                  healthy: { type: integer }
+                  degraded: { type: integer }
+                  failed: { type: integer }
+                  avg_data_freshness_hours: { type: number }
+                  runs_last_24h: { type: integer }
+                  success_rate_pct: { type: number }
+                  total_records_ingested_24h: { type: integer }
+
+  /health/quality:
+    get:
+      tags: [Health]
+      summary: Get data quality and reconciliation metrics
+      operationId: getQualityMetrics
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: billing_period
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reconciliation_entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        source_type: { type: string }
+                        source_total: { type: number }
+                        platform_total: { type: number }
+                        variance_pct: { type: number }
+                        status: { type: string, enum: [Balanced, Warning, Critical] }
+                  overall_quality_score: { type: number }
+
+  /audit-log:
+    get:
+      tags: [Health]
+      summary: List ingestion audit log entries
+      operationId: listAuditLog
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: event_type
+          in: query
+          schema: { type: string }
+        - name: start_after
+          in: query
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+
+# ===========================================================================
+# COMPONENTS
+# ===========================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT with tenant_id, roles[], sub claims
+
+  parameters:
+    TenantId:
+      name: X-Tenant-ID
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: Tenant context (also injected by API gateway from JWT)
+    ConnectorId:
+      name: connector_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PageNumber:
+      name: page
+      in: query
+      schema: { type: integer, default: 1, minimum: 1 }
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, default: 25, minimum: 1, maximum: 100 }
+    SortBy:
+      name: sort_by
+      in: query
+      schema: { type: string, default: last_modified_date }
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    Forbidden:
+      description: Insufficient permissions for this tenant/resource
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Detail
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+        error_code: { type: string, description: "Platform-specific error code (FINOPS-4xxx/5xxx)" }
+        trace_id: { type: string, description: "OpenTelemetry trace ID" }
+
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total_items: { type: integer }
+        total_pages: { type: integer }
+
+    Connector:
+      type: object
+      properties:
+        connector_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        connector_name: { type: string }
+        source_type: { type: string }
+        source_subtype: { type: string }
+        endpoint_url: { type: string }
+        credential_type: { type: string }
+        credential_expiry: { type: string, format: date-time }
+        ingestion_schedule: { type: string }
+        ingestion_interval_hours: { type: integer }
+        last_successful_run: { type: string, format: date-time }
+        last_run_status: { type: string }
+        last_run_record_count: { type: integer }
+        retry_count: { type: integer }
+        schema_version: { type: string }
+        is_active: { type: boolean }
+        created_date: { type: string, format: date-time }
+        last_modified_date: { type: string, format: date-time }
+
+    ConnectorCreateRequest:
+      type: object
+      required: [connector_name, source_type, credential_ref, credential_type]
+      properties:
+        connector_name: { type: string, minLength: 3, maxLength: 200 }
+        source_type: { type: string }
+        source_subtype: { type: string }
+        endpoint_url: { type: string, format: uri }
+        credential_ref: { type: string, description: "Vault secret path reference" }
+        credential_type: { type: string, enum: [API_Key, Service_Account, OAuth_Token, IAM_Role, Username_Password] }
+        credential_expiry: { type: string, format: date-time }
+        ingestion_schedule: { type: string, default: "0 2,14 * * *" }
+        ingestion_interval_hours: { type: integer, default: 12 }
+        config_json: { type: object }
+
+    ConnectorUpdateRequest:
+      type: object
+      properties:
+        connector_name: { type: string }
+        endpoint_url: { type: string }
+        credential_ref: { type: string }
+        ingestion_schedule: { type: string }
+        ingestion_interval_hours: { type: integer }
+        config_json: { type: object }
+        is_active: { type: boolean }
+
+    ConnectorListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Connector' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+    IngestionRun:
+      type: object
+      properties:
+        run_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        connector_id: { type: string, format: uuid }
+        trigger_type: { type: string }
+        start_timestamp: { type: string, format: date-time }
+        end_timestamp: { type: string, format: date-time }
+        status: { type: string }
+        records_expected: { type: integer }
+        records_received: { type: integer }
+        records_validated: { type: integer }
+        records_quarantined: { type: integer }
+        records_deduplicated: { type: integer }
+        cost_reconciliation_source: { type: number }
+        cost_reconciliation_staged: { type: number }
+        reconciliation_variance_pct: { type: number }
+        quality_score: { type: number }
+        duration_seconds: { type: integer }
+        pipeline_version: { type: string }
+
+    RunListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IngestionRun' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+    RateCard:
+      type: object
+      properties:
+        rate_card_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        resource_type: { type: string }
+        unit_of_measure: { type: string }
+        rate_sar: { type: number }
+        effective_from: { type: string, format: date }
+        effective_to: { type: string, format: date }
+        datacenter: { type: string }
+        cluster: { type: string }
+        notes: { type: string }
+        approved_by: { type: string, format: uuid }
+
+    RateCardRequest:
+      type: object
+      required: [resource_type, unit_of_measure, rate_sar, effective_from]
+      properties:
+        resource_type: { type: string, enum: [Compute, Memory, Storage, GPU, License, Network, Facility] }
+        unit_of_measure: { type: string }
+        rate_sar: { type: number, exclusiveMinimum: 0 }
+        effective_from: { type: string, format: date }
+        effective_to: { type: string, format: date }
+        datacenter: { type: string }
+        cluster: { type: string }
+        notes: { type: string, maxLength: 500 }
+
+    RateCardListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RateCard' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              log_id: { type: string, format: uuid }
+              event_type: { type: string }
+              run_id: { type: string, format: uuid }
+              connector_id: { type: string, format: uuid }
+              performed_by: { type: string, format: uuid }
+              event_detail: { type: object }
+              event_timestamp: { type: string, format: date-time }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }

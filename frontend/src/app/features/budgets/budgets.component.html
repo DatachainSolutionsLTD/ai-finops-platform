@@ -1,0 +1,134 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List pattern: 5-stat summary → filter toolbar → AG Grid with health badges + progress bars -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Budgets" subtitle="Budget tracking, variance analysis, and forecast-integrated health monitoring">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export budgets as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+        @if (canCreate()) {
+          <ion-button fill="solid" color="primary" (click)="router.navigate(['/quantify/budgets/new'])">
+            <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+            Create budget
+          </ion-button>
+        }
+      </div>
+    </app-page-header>
+
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Budget summary">
+        <div class="summary-stat"><div class="summary-label">Total budgets</div><div class="summary-value">{{ s.total }}</div></div>
+        <div class="summary-stat"><div class="summary-label">On track</div><div class="summary-value summary-value-success">{{ s.onTrack }}</div></div>
+        <div class="summary-stat"><div class="summary-label">At risk</div><div class="summary-value" [class.summary-value-warning]="s.atRisk > 0">{{ s.atRisk }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Over budget</div><div class="summary-value" [class.summary-value-danger]="s.overBudget > 0">{{ s.overBudget }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Total budgeted</div><div class="summary-value">{{ s.totalBudgeted | number:'1.0-0' }} {{ s.currency }}</div></div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading budgets..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load budgets" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter budgets">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search by name or owner..." debounce="300" animated="true"
+            [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search budgets">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-bg-health" fill="outline" color="medium">
+            <ion-icon name="heart-outline" slot="start" aria-hidden="true"></ion-icon>
+            Health
+            @if (healthFilter().length > 0) { <span class="filter-count">{{ healthFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-bg-health" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (h of healthOptions; track h) {
+                  <ion-item button (click)="toggleHealthFilter(h)">
+                    <ion-checkbox slot="start" [checked]="healthFilter().includes(h)" [attr.aria-label]="'Filter by health ' + h"></ion-checkbox>
+                    <ion-label>{{ h.replace('_', ' ') }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-bg-status" fill="outline" color="medium">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-bg-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)">
+                    <ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (h of healthFilter(); track h) {
+            <ion-chip (click)="toggleHealthFilter(h)" [attr.aria-label]="'Remove filter ' + h">
+              <ion-label>{{ h.replace('_', ' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (s of statusFilter(); track s) {
+            <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove filter ' + s">
+              <ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">{{ total() | number }} budget{{ total() !== 1 ? 's' : '' }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10, 20, 50, 100]"
+              [animateRows]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              aria-label="Budgets table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="wallet-outline" title="No budgets match your filters"
+              description="Try adjusting your search or filter criteria."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

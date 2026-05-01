@@ -1,0 +1,70 @@
+// FinOps Platform Design System v1.1 — Executive Summary Dashboard — tokens only.
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+.header-actions { display: flex; gap: var(--finops-space-3); ion-button { --border-radius: var(--finops-radius-md); text-transform: none; letter-spacing: 0; } }
+
+// ── KPI row (6 cards) ─────────────────────────────────────────────────────
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--finops-space-4);
+  margin-bottom: var(--finops-space-6);
+  @media (max-width: 1200px) { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 768px)  { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 480px)  { grid-template-columns: 1fr; }
+}
+
+// ── Full-width trend card ─────────────────────────────────────────────────
+.chart-card-full {
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+  margin: 0 0 var(--finops-space-6);
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-2); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-2) var(--finops-space-4); }
+}
+
+// ── 2-column chart row ────────────────────────────────────────────────────
+.chart-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--finops-space-6);
+  @media (max-width: 960px) { grid-template-columns: 1fr; }
+}
+
+.chart-card {
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+  margin: 0;
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-4); }
+}
+
+// ── Cost movers panel ─────────────────────────────────────────────────────
+.movers-body    { padding: var(--finops-space-4) var(--finops-space-6) var(--finops-space-6); display: flex; flex-direction: column; gap: var(--finops-space-4); }
+.movers-section { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.movers-heading { font-size: var(--finops-text-xs); font-weight: var(--finops-font-bold); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 var(--finops-space-1);
+  &.movers-heading-inc { color: var(--finops-danger); }
+  &.movers-heading-dec { color: var(--finops-success); }
+}
+.mover-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--finops-space-2) var(--finops-space-3);
+  border-radius: var(--finops-radius-md);
+  cursor: pointer; transition: background-color 0.15s;
+  &:hover { background-color: var(--finops-bg-subtle); }
+}
+.mover-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mover-name { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mover-meta { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+.mover-delta { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; margin-left: var(--finops-space-4); }
+.mover-pct   { font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); }
+.mover-amt   { font-family: var(--finops-font-mono); font-size: var(--finops-text-xs); }
+.delta-increase { .mover-pct, .mover-amt { color: var(--finops-danger); } }
+.delta-decrease { .mover-pct, .mover-amt { color: var(--finops-success); } }
+.movers-divider { height: 1px; background-color: var(--finops-border-subtle); }

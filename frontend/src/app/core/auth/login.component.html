@@ -1,0 +1,109 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<app-auth-layout
+  title="Sign in to your account"
+  subtitle="Enter your credentials to access the FinOps platform.">
+
+  @if (banner(); as b) {
+    <div class="auth-banner" [class]="'banner-' + b.type" role="status">
+      <ion-icon
+        [name]="b.type === 'danger' ? 'alert-circle-outline' : b.type === 'warning' ? 'warning-outline' : 'information-circle-outline'"
+        aria-hidden="true">
+      </ion-icon>
+      <span>{{ b.text }}</span>
+    </div>
+  }
+
+  @if (errorMessage(); as err) {
+    <div class="auth-banner banner-danger" role="alert">
+      <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+      <span>{{ err }}</span>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+
+    <div class="form-field">
+      <label for="email">Email <span class="req">*</span></label>
+      <ion-input
+        id="email"
+        type="email"
+        formControlName="email"
+        autocomplete="username"
+        inputmode="email"
+        placeholder="you@example.com"
+        fill="outline"
+        [class.invalid]="fieldError('email')">
+      </ion-input>
+      @if (fieldError('email'); as err) {
+        <div class="field-error">{{ err }}</div>
+      }
+    </div>
+
+    <div class="form-field">
+      <div class="field-label-row">
+        <label for="password">Password <span class="req">*</span></label>
+        <a routerLink="/forgot-password" class="field-link">Forgot password?</a>
+      </div>
+      <div class="password-wrapper">
+        <ion-input
+          id="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          placeholder="Enter your password"
+          fill="outline"
+          [class.invalid]="fieldError('password')">
+        </ion-input>
+        <button
+          type="button"
+          class="password-toggle"
+          (click)="togglePassword()"
+          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+          <ion-icon
+            [name]="showPassword() ? 'eye-off-outline' : 'eye-outline'"
+            aria-hidden="true">
+          </ion-icon>
+        </button>
+      </div>
+      @if (fieldError('password'); as err) {
+        <div class="field-error">{{ err }}</div>
+      }
+    </div>
+
+    <div class="form-field-inline">
+      <label class="remember-row">
+        <ion-checkbox formControlName="rememberMe"></ion-checkbox>
+        <span>Keep me signed in for 30 days</span>
+      </label>
+    </div>
+
+    <ion-button
+      type="submit"
+      expand="block"
+      color="primary"
+      [disabled]="!canSubmit()">
+      @if (isSubmitting()) {
+        <ion-spinner name="dots" slot="start"></ion-spinner>
+        Signing in...
+      } @else {
+        Sign in
+        <ion-icon name="arrow-forward-outline" slot="end" aria-hidden="true"></ion-icon>
+      }
+    </ion-button>
+
+  </form>
+
+  <div class="auth-divider"><span>or</span></div>
+
+  <div class="auth-sso">
+    <button type="button" class="sso-button" disabled>
+      <ion-icon name="business-outline" aria-hidden="true"></ion-icon>
+      <span>Continue with SSO</span>
+    </button>
+    <div class="sso-hint">SSO is configured per-tenant by your administrator.</div>
+  </div>
+
+</app-auth-layout>

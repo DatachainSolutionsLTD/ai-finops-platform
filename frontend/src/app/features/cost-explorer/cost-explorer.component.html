@@ -1,0 +1,194 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard chart-heavy: PageHeader+controls → KPIs → Narrative → full-width trend → 2-col charts → driver grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- PageHeader with TimeRange + dimension controls -->
+    <app-page-header title="Cost Explorer" [subtitle]="subtitle()">
+      <div slot="actions" class="header-controls">
+        <div class="control-group">
+          <label class="control-label" for="ce-granularity">Granularity</label>
+          <ion-select
+            id="ce-granularity"
+            [value]="granularity()"
+            (ionChange)="onGranularityChange($any($event.detail.value))"
+            interface="popover"
+            aria-label="Select granularity">
+            @for (g of granularityOptions; track g) {
+              <ion-select-option [value]="g">{{ g | titlecase }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="ce-charge-type">Cost type</label>
+          <ion-select
+            id="ce-charge-type"
+            [value]="chargeType()"
+            (ionChange)="chargeType.set($any($event.detail.value))"
+            interface="popover"
+            aria-label="Select cost type">
+            @for (c of chargeTypeOptions; track c.value) {
+              <ion-select-option [value]="c.value">{{ c.label }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+        <app-time-range-selector
+          [value]="timeRange()"
+          [options]="timeRangeOptions"
+          (valueChange)="onTimeRangeChange($event)">
+        </app-time-range-selector>
+      </div>
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading cost data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load cost data"
+        [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key cost metrics">
+        <app-kpi-card
+          label="Total spend"
+          [value]="kpis()!.totalSpend.value | number:'1.0-0'"
+          [unit]="kpis()!.totalSpend.currency"
+          [deltaPercent]="kpis()!.totalSpend.deltaPercent"
+          [deltaDirection]="kpis()!.totalSpend.deltaDirection"
+          [sparklineData]="kpis()!.totalSpend.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Forecasted spend"
+          [value]="kpis()!.forecastedSpend.value | number:'1.0-0'"
+          [unit]="kpis()!.forecastedSpend.currency"
+          [deltaPercent]="kpis()!.forecastedSpend.deltaPercent"
+          [deltaDirection]="kpis()!.forecastedSpend.deltaDirection"
+          [sparklineData]="kpis()!.forecastedSpend.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Budget utilization"
+          [value]="kpis()!.budgetUtilization.value | number:'1.1-1'"
+          unit="%"
+          [deltaPercent]="kpis()!.budgetUtilization.deltaPercent"
+          [deltaDirection]="kpis()!.budgetUtilization.deltaDirection"
+          [sparklineData]="kpis()!.budgetUtilization.sparkline"
+          [status]="kpis()!.budgetUtilization.value > 90 ? 'danger' : kpis()!.budgetUtilization.value > 75 ? 'warning' : 'success'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Optimization savings"
+          [value]="kpis()!.optimizationSavings.value | number:'1.0-0'"
+          [unit]="kpis()!.optimizationSavings.currency"
+          [deltaPercent]="kpis()!.optimizationSavings.deltaPercent"
+          [deltaDirection]="kpis()!.optimizationSavings.deltaDirection"
+          [sparklineData]="kpis()!.optimizationSavings.sparkline"
+          status="success">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block
+          [summary]="n.summary"
+          [highlights]="n.highlights"
+          [agentName]="n.agentName"
+          [generatedAt]="n.generatedAt">
+        </app-narrative-block>
+      }
+
+      <!-- Full-width stacked area trend -->
+      <ion-card class="chart-card chart-card-full">
+        <ion-card-header>
+          <ion-card-title>Spend trend by provider</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <apx-chart
+            [series]="trendSeries()"
+            [chart]="trendChart"
+            [xaxis]="trendXAxis()"
+            [yaxis]="trendYAxis"
+            [stroke]="trendStroke"
+            [fill]="trendFill"
+            [colors]="trendColors"
+            [tooltip]="trendTooltip"
+            [dataLabels]="trendDataLabels"
+            [legend]="trendLegend"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2-col chart row: donut + horizontal bar -->
+      <section class="chart-grid" aria-label="Spend distribution charts">
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Spend by provider</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (providerSeries().length > 0) {
+              <apx-chart
+                [series]="providerSeries()"
+                [chart]="providerChart"
+                [labels]="providerLabels()"
+                [colors]="providerColors"
+                [legend]="providerLegend"
+                [plotOptions]="providerPlotOptions"
+                [dataLabels]="providerDataLabels">
+              </apx-chart>
+            } @else {
+              <app-empty-state icon="pie-chart-outline" title="No data" description="No provider breakdown available."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Spend by service category</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="serviceSeries()"
+              [chart]="serviceChart"
+              [xaxis]="serviceXAxis()"
+              [yaxis]="serviceYAxis"
+              [plotOptions]="servicePlotOptions"
+              [colors]="serviceColors"
+              [tooltip]="serviceTooltip"
+              [dataLabels]="serviceDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+      <!-- Top cost drivers grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title>Top cost drivers</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (driverRows().length > 0) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="driverRows()"
+              [columnDefs]="driverColDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="false"
+              [animateRows]="true"
+              aria-label="Top cost drivers table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="bar-chart-outline" title="No driver data" description="No cost driver data available for this period."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

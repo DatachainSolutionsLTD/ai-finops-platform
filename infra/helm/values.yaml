@@ -1,0 +1,132 @@
+# =============================================================================
+# Helm Base Chart — Agent Deployment Template
+# File: helm/agent-chart/values.yaml
+# Scope: Seed Round — reusable chart for all agents A01–A05 + A27 + Airflow
+# Usage: helm upgrade --install finops-{agent} ./helm/agent-chart \
+#          -f values-{agent}.yaml --namespace tenant-g42-seed
+# =============================================================================
+
+# --- Global settings ---
+global:
+  project: finops
+  stage: seed
+  tenant: g42-seed
+  registry: "${AWS_ACCOUNT_ID}.dkr.ecr.me-south-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+# --- Agent identity (overridden per agent values file) ---
+agent:
+  type: ""           # A01, A02, A03, A04, A05, A27
+  name: ""           # e.g., data-ingestion, cost-normalization
+  autonomyLevel: L4  # Seed: fully autonomous
+  version: "0.1.0"
+
+# --- Container image ---
+image:
+  repository: ""     # Set per agent: ${global.registry}/finops-a01-data-ingestion
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# --- Replica configuration ---
+replicaCount: 1      # Seed: single replica per agent; Angel: 2+ with HPA
+
+# --- Resource limits ---
+resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+# --- Service account (maps to Vault auth) ---
+serviceAccount:
+  create: true
+  name: ""           # Auto-generated: agent-{type}-sa
+  annotations:
+    finops.io/vault-role: ""   # Set per agent
+
+# --- Vault sidecar injection ---
+vault:
+  enabled: true
+  address: "http://vault.finops-platform.svc.cluster.local:8200"
+  authPath: "auth/kubernetes"
+  role: ""           # Set per agent: agent-a01, agent-a02, etc.
+  secretPaths: []    # Populated per agent values file
+
+# --- Environment variables (injected into all agent pods) ---
+env:
+  DATABASE_URL:
+    valueFrom:
+      secretKeyRef:
+        name: finops-db-credentials
+        key: url
+  DATABASE_READ_URL:
+    valueFrom:
+      secretKeyRef:
+        name: finops-db-credentials
+        key: read_url
+  REDIS_URL:
+    valueFrom:
+      secretKeyRef:
+        name: finops-redis-credentials
+        key: url
+  TENANT_ID: "g42-seed"
+  ENVIRONMENT: "seed"
+  LOG_LEVEL: "INFO"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.finops-monitoring:4317"
+  OTEL_SERVICE_NAME: ""   # Set per agent
+
+# --- Probes ---
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 30
+
+# --- Service ---
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# --- Pod disruption budget ---
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# --- Node affinity ---
+nodeSelector:
+  role: agent-worker
+
+tolerations: []
+
+# --- Pod annotations ---
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+# --- Labels applied to all resources ---
+commonLabels:
+  app.kubernetes.io/part-of: finops
+  finops.io/stage: seed
+  finops.io/tenant: g42-seed

@@ -1,0 +1,675 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<!-- Wizard pattern per 02_Component_Pattern_Library.md §3.4                 -->
+<!-- PageHeader → WizardStepper → active step card → navigation footer       -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- ── PageHeader ───────────────────────────────────────────────────── -->
+    <app-page-header
+      title="New Tenant Onboarding"
+      subtitle="Provision a new tenant on the platform">
+      <div slot="actions" class="header-actions">
+        <ion-button
+          fill="clear"
+          color="medium"
+          [disabled]="isSubmitting()"
+          (click)="saveAndExit()">
+          <ion-icon name="bookmark-outline" slot="start" aria-hidden="true"></ion-icon>
+          Save &amp; exit
+        </ion-button>
+        <ion-button
+          fill="clear"
+          color="medium"
+          [disabled]="isSubmitting()"
+          (click)="cancel()">
+          Cancel
+        </ion-button>
+      </div>
+    </app-page-header>
+
+    <!-- ── Loading / Error ──────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <app-loading-state
+        variant="skeleton"
+        message="Loading onboarding draft...">
+      </app-loading-state>
+    }
+
+    @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load onboarding"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    }
+
+    @else if (draft()) {
+
+      <!-- ── WizardStepper ─────────────────────────────────────────────── -->
+      <nav class="wizard-stepper" role="navigation" aria-label="Onboarding steps">
+        <ol class="stepper-list">
+          @for (s of steps; track s.id; let i = $index) {
+            <li
+              class="stepper-item"
+              [class.complete]="stepStatus(s.id) === 'complete'"
+              [class.active]="stepStatus(s.id) === 'active'"
+              [class.upcoming]="stepStatus(s.id) === 'upcoming'"
+              [class.clickable]="stepStatus(s.id) === 'complete'">
+              <button
+                type="button"
+                class="stepper-btn"
+                [disabled]="stepStatus(s.id) === 'upcoming'"
+                (click)="jumpToStep(s.id)"
+                [attr.aria-current]="stepStatus(s.id) === 'active' ? 'step' : null"
+                [attr.aria-label]="'Step ' + s.order + ' of ' + steps.length + ': ' + s.title + ', ' + stepStatus(s.id)">
+                <span class="stepper-indicator">
+                  @if (stepStatus(s.id) === 'complete') {
+                    <ion-icon name="checkmark" aria-hidden="true"></ion-icon>
+                  } @else {
+                    <span class="stepper-number">{{ s.order }}</span>
+                  }
+                </span>
+                <span class="stepper-label">
+                  <span class="stepper-title">{{ s.title }}</span>
+                  <span class="stepper-desc">{{ s.description }}</span>
+                </span>
+              </button>
+              @if (i < steps.length - 1) {
+                <span class="stepper-connector" aria-hidden="true"></span>
+              }
+            </li>
+          }
+        </ol>
+      </nav>
+
+      <!-- ── Step Body ─────────────────────────────────────────────────── -->
+      <form [formGroup]="form" (ngSubmit)="$event.preventDefault()" novalidate>
+
+        <!-- Step 1: Organization -->
+        @if (currentStepId() === 'organization') {
+          <ion-card class="step-card">
+            <ion-card-content formGroupName="organization">
+              <div class="step-header">
+                <h2 class="step-title">Organization</h2>
+                <p class="step-desc">
+                  Basic identity for the tenant. The tenant code must be unique across the platform
+                  and cannot be changed after provisioning.
+                </p>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-field form-field-wide">
+                  <label for="legalName">Legal name <span class="req">*</span></label>
+                  <ion-input
+                    id="legalName"
+                    formControlName="legalName"
+                    placeholder="Registered legal name of the organization"
+                    fill="outline">
+                  </ion-input>
+                  @if (fieldError('organization.legalName'); as err) {
+                    <div class="field-error">{{ err }}</div>
+                  }
+                </div>
+
+                <div class="form-field">
+                  <label for="displayName">Display name <span class="req">*</span></label>
+                  <ion-input
+                    id="displayName"
+                    formControlName="displayName"
+                    placeholder="Short name shown in the UI"
+                    fill="outline">
+                  </ion-input>
+                  @if (fieldError('organization.displayName'); as err) {
+                    <div class="field-error">{{ err }}</div>
+                  }
+                </div>
+
+                <div class="form-field">
+                  <label for="tenantCode">Tenant code <span class="req">*</span></label>
+                  <ion-input
+                    id="tenantCode"
+                    formControlName="tenantCode"
+                    placeholder="UPPERCASE-CODE"
+                    style="text-transform: uppercase;"
+                    fill="outline">
+                  </ion-input>
+                  @if (fieldError('organization.tenantCode'); as err) {
+                    <div class="field-error">{{ err }}</div>
+                  } @else if (codeCheck(); as cc) {
+                    @if (cc.available) {
+                      <div class="field-hint field-hint-success">
+                        <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+                        <span>{{ cc.code }} is available</span>
+                      </div>
+                    } @else {
+                      <div class="field-error">
+                        <span>{{ cc.reason }}</span>
+                      </div>
+                      @if (cc.suggestions?.length) {
+                        <div class="field-hint">
+                          Try:
+                          @for (s of cc.suggestions; track s) {
+                            <button type="button" class="suggestion-chip"
+                                    (click)="form.get('organization.tenantCode')!.setValue(s)">
+                              {{ s }}
+                            </button>
+                          }
+                        </div>
+                      }
+                    }
+                  } @else {
+                    <div class="field-hint">3-30 characters; uppercase letters, digits, and hyphens only</div>
+                  }
+                </div>
+
+                <div class="form-field">
+                  <label for="tierCode">Tier <span class="req">*</span></label>
+                  <ion-select
+                    id="tierCode"
+                    formControlName="tierCode"
+                    interface="popover"
+                    fill="outline">
+                    <ion-select-option value="STARTER">Starter</ion-select-option>
+                    <ion-select-option value="PROFESSIONAL">Professional</ion-select-option>
+                    <ion-select-option value="ENTERPRISE">Enterprise</ion-select-option>
+                  </ion-select>
+                  <div class="field-hint">Determines quotas, feature access, and support level</div>
+                </div>
+
+                <div class="form-field">
+                  <label for="industry">Industry</label>
+                  <ion-select
+                    id="industry"
+                    formControlName="industry"
+                    interface="popover"
+                    placeholder="Select industry"
+                    fill="outline">
+                    @for (i of industryOptions; track i) {
+                      <ion-select-option [value]="i">{{ i }}</ion-select-option>
+                    }
+                  </ion-select>
+                </div>
+
+                <div class="form-field">
+                  <label for="websiteUrl">Website</label>
+                  <ion-input
+                    id="websiteUrl"
+                    type="url"
+                    formControlName="websiteUrl"
+                    placeholder="https://example.com"
+                    fill="outline">
+                  </ion-input>
+                  @if (fieldError('organization.websiteUrl'); as err) {
+                    <div class="field-error">{{ err }}</div>
+                  }
+                </div>
+
+                <div class="form-field">
+                  <label for="taxId">Tax / VAT ID</label>
+                  <ion-input
+                    id="taxId"
+                    formControlName="taxId"
+                    placeholder="Tax registration number"
+                    fill="outline">
+                  </ion-input>
+                </div>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Step 2: Localization -->
+        @if (currentStepId() === 'localization') {
+          <ion-card class="step-card">
+            <ion-card-content formGroupName="localization">
+              <div class="step-header">
+                <h2 class="step-title">Localization</h2>
+                <p class="step-desc">
+                  Currency, locale, timezone, and fiscal calendar settings. These defaults can be
+                  changed later in Organization Settings.
+                </p>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="primaryCurrencyCode">Primary currency <span class="req">*</span></label>
+                  <ion-select id="primaryCurrencyCode" formControlName="primaryCurrencyCode" interface="popover" fill="outline">
+                    <ion-select-option value="AED">AED — UAE Dirham</ion-select-option>
+                    <ion-select-option value="USD">USD — US Dollar</ion-select-option>
+                    <ion-select-option value="EUR">EUR — Euro</ion-select-option>
+                    <ion-select-option value="GBP">GBP — Pound Sterling</ion-select-option>
+                    <ion-select-option value="JPY">JPY — Japanese Yen</ion-select-option>
+                    <ion-select-option value="SGD">SGD — Singapore Dollar</ion-select-option>
+                    <ion-select-option value="INR">INR — Indian Rupee</ion-select-option>
+                  </ion-select>
+                </div>
+
+                <div class="form-field">
+                  <label for="primaryLocale">Locale <span class="req">*</span></label>
+                  <ion-select id="primaryLocale" formControlName="primaryLocale" interface="popover" fill="outline">
+                    <ion-select-option value="en-AE">English (UAE)</ion-select-option>
+                    <ion-select-option value="en-US">English (US)</ion-select-option>
+                    <ion-select-option value="en-GB">English (UK)</ion-select-option>
+                    <ion-select-option value="ar-AE">Arabic (UAE)</ion-select-option>
+                    <ion-select-option value="de-DE">German</ion-select-option>
+                    <ion-select-option value="fr-FR">French</ion-select-option>
+                    <ion-select-option value="ja-JP">Japanese</ion-select-option>
+                  </ion-select>
+                </div>
+
+                <div class="form-field">
+                  <label for="primaryTimezone">Timezone <span class="req">*</span></label>
+                  <ion-select id="primaryTimezone" formControlName="primaryTimezone" interface="popover" fill="outline">
+                    <ion-select-option value="Asia/Dubai">Asia/Dubai (GMT+4)</ion-select-option>
+                    <ion-select-option value="Europe/London">Europe/London (GMT)</ion-select-option>
+                    <ion-select-option value="Europe/Berlin">Europe/Berlin (GMT+1)</ion-select-option>
+                    <ion-select-option value="America/New_York">America/New York (GMT-5)</ion-select-option>
+                    <ion-select-option value="Asia/Tokyo">Asia/Tokyo (GMT+9)</ion-select-option>
+                    <ion-select-option value="Asia/Singapore">Asia/Singapore (GMT+8)</ion-select-option>
+                  </ion-select>
+                </div>
+
+                <div class="form-field">
+                  <label for="dateFormat">Date format <span class="req">*</span></label>
+                  <ion-select id="dateFormat" formControlName="dateFormat" interface="popover" fill="outline">
+                    <ion-select-option value="DMY">DD/MM/YYYY</ion-select-option>
+                    <ion-select-option value="MDY">MM/DD/YYYY</ion-select-option>
+                    <ion-select-option value="YMD">YYYY-MM-DD</ion-select-option>
+                  </ion-select>
+                </div>
+
+                <div class="form-field">
+                  <label for="fiscalYearStart">Fiscal year starts <span class="req">*</span></label>
+                  <ion-select id="fiscalYearStart" formControlName="fiscalYearStart" interface="popover" fill="outline">
+                    <ion-select-option value="January">January</ion-select-option>
+                    <ion-select-option value="April">April</ion-select-option>
+                    <ion-select-option value="July">July</ion-select-option>
+                    <ion-select-option value="October">October</ion-select-option>
+                  </ion-select>
+                </div>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Step 3: Residency -->
+        @if (currentStepId() === 'residency') {
+          <ion-card class="step-card">
+            <ion-card-content formGroupName="residency">
+              <div class="step-header">
+                <h2 class="step-title">Data residency &amp; compliance</h2>
+                <p class="step-desc">
+                  Where the tenant's data is stored and processed. Choose carefully — data residency
+                  cannot be changed without a migration workflow after provisioning.
+                </p>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-field form-field-wide">
+                  <label for="dataResidencyRegion">Data residency region <span class="req">*</span></label>
+                  <ion-select id="dataResidencyRegion" formControlName="dataResidencyRegion" interface="popover" fill="outline">
+                    <ion-select-option value="UAE">UAE (Abu Dhabi)</ion-select-option>
+                    <ion-select-option value="EU_West">EU West (Ireland)</ion-select-option>
+                    <ion-select-option value="EU_Central">EU Central (Frankfurt)</ion-select-option>
+                    <ion-select-option value="US_East">US East (Virginia)</ion-select-option>
+                    <ion-select-option value="US_West">US West (Oregon)</ion-select-option>
+                    <ion-select-option value="Asia_Pacific_Singapore">Asia Pacific (Singapore)</ion-select-option>
+                    <ion-select-option value="Asia_Pacific_Tokyo">Asia Pacific (Tokyo)</ion-select-option>
+                  </ion-select>
+                </div>
+              </div>
+
+              <h3 class="subsection-title">Regulatory frameworks</h3>
+              <p class="subsection-desc">Enable the frameworks that apply to this tenant. These can be adjusted later.</p>
+
+              <div class="toggle-list">
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">GDPR</div>
+                    <div class="toggle-desc">EU General Data Protection Regulation</div>
+                  </div>
+                  <ion-toggle formControlName="gdprApplicable"></ion-toggle>
+                </label>
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">UAE PDPL</div>
+                    <div class="toggle-desc">UAE Personal Data Protection Law</div>
+                  </div>
+                  <ion-toggle formControlName="pdplApplicable"></ion-toggle>
+                </label>
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">HIPAA</div>
+                    <div class="toggle-desc">US Health Insurance Portability and Accountability Act</div>
+                  </div>
+                  <ion-toggle formControlName="hipaaApplicable"></ion-toggle>
+                </label>
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">SOX</div>
+                    <div class="toggle-desc">US Sarbanes-Oxley Act</div>
+                  </div>
+                  <ion-toggle formControlName="soxApplicable"></ion-toggle>
+                </label>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Step 4: Primary Admin -->
+        @if (currentStepId() === 'primary-admin') {
+          <ion-card class="step-card">
+            <ion-card-content formGroupName="primaryAdmin">
+              <div class="step-header">
+                <h2 class="step-title">Primary administrator</h2>
+                <p class="step-desc">
+                  The first user for this tenant. They'll receive an invitation email and will have
+                  the Tenant_Admin role by default.
+                </p>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="adminEmail">Email <span class="req">*</span></label>
+                  <ion-input id="adminEmail" type="email" formControlName="email" placeholder="admin@example.com" fill="outline"></ion-input>
+                  @if (fieldError('primaryAdmin.email'); as err) { <div class="field-error">{{ err }}</div> }
+                </div>
+
+                <div class="form-field">
+                  <label for="adminName">Display name <span class="req">*</span></label>
+                  <ion-input id="adminName" formControlName="displayName" placeholder="Full name" fill="outline"></ion-input>
+                  @if (fieldError('primaryAdmin.displayName'); as err) { <div class="field-error">{{ err }}</div> }
+                </div>
+
+                <div class="form-field form-field-wide">
+                  <label for="adminPhone">Phone</label>
+                  <ion-input id="adminPhone" type="tel" formControlName="phone" placeholder="+971 4 000 0000" fill="outline"></ion-input>
+                </div>
+              </div>
+
+              <div class="toggle-list">
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">Send invitation email</div>
+                    <div class="toggle-desc">The admin will receive a setup link via email immediately after provisioning completes.</div>
+                  </div>
+                  <ion-toggle formControlName="sendInviteEmail"></ion-toggle>
+                </label>
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">Require MFA</div>
+                    <div class="toggle-desc">Multi-factor authentication must be set up before first login.</div>
+                  </div>
+                  <ion-toggle formControlName="requireMfa"></ion-toggle>
+                </label>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Step 5: Integrations -->
+        @if (currentStepId() === 'integrations') {
+          <ion-card class="step-card">
+            <ion-card-content formGroupName="integrations">
+              <div class="step-header">
+                <h2 class="step-title">Integrations</h2>
+                <p class="step-desc">
+                  Select which systems to connect. This step is optional — you can add integrations
+                  later from the Integrations page.
+                </p>
+              </div>
+
+              <div class="integration-grid">
+                @for (i of integrationCatalog; track i.code) {
+                  <button
+                    type="button"
+                    class="integration-card"
+                    [class.selected]="isIntegrationSelected(i.code)"
+                    (click)="toggleIntegration(i.code)"
+                    [attr.aria-pressed]="isIntegrationSelected(i.code)">
+                    <div class="integration-icon">
+                      <ion-icon [name]="i.icon" aria-hidden="true"></ion-icon>
+                    </div>
+                    <div class="integration-meta">
+                      <div class="integration-name">{{ i.name }}</div>
+                      <div class="integration-category">{{ i.category }}</div>
+                    </div>
+                    @if (isIntegrationSelected(i.code)) {
+                      <div class="integration-check">
+                        <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+                      </div>
+                    }
+                  </button>
+                }
+              </div>
+
+              <div class="integrations-empty-note">
+                <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+                <span>
+                  @if ((form.get('integrations.selectedProviders')?.value || []).length === 0) {
+                    No integrations selected. You can skip this step and add them later.
+                  } @else {
+                    Credentials for selected integrations will be requested after provisioning completes.
+                  }
+                </span>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Step 6: Agent Defaults -->
+        @if (currentStepId() === 'agent-defaults') {
+          <ion-card class="step-card">
+            <ion-card-content formGroupName="agentDefaults">
+              <div class="step-header">
+                <h2 class="step-title">Agent defaults</h2>
+                <p class="step-desc">
+                  Control how autonomous the FinOps agents will be for this tenant. These can be
+                  fine-tuned per agent after provisioning.
+                </p>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-field form-field-wide">
+                  <label for="agentAutonomyCeiling">Maximum agent autonomy <span class="req">*</span></label>
+                  <ion-select id="agentAutonomyCeiling" formControlName="agentAutonomyCeiling" interface="popover" fill="outline">
+                    <ion-select-option value="L1_Suggest">L1 — Suggest only</ion-select-option>
+                    <ion-select-option value="L2_Approve_To_Act">L2 — Approve before action</ion-select-option>
+                    <ion-select-option value="L3_Act_With_Notify">L3 — Act with notification</ion-select-option>
+                    <ion-select-option value="L4_Fully_Autonomous">L4 — Fully autonomous</ion-select-option>
+                  </ion-select>
+                  <div class="field-hint">L3 is recommended — agents act on pre-approved actions and notify humans.</div>
+                </div>
+
+                <div class="form-field">
+                  <label for="defaultApprovalSla">Approval SLA (hours) <span class="req">*</span></label>
+                  <ion-input
+                    id="defaultApprovalSla"
+                    type="number"
+                    formControlName="defaultApprovalSla"
+                    min="1" max="168"
+                    fill="outline">
+                  </ion-input>
+                  @if (fieldError('agentDefaults.defaultApprovalSla'); as err) { <div class="field-error">{{ err }}</div> }
+                </div>
+
+                <div class="form-field">
+                  <label for="anomalyAlertSensitivity">Anomaly sensitivity <span class="req">*</span></label>
+                  <ion-select id="anomalyAlertSensitivity" formControlName="anomalyAlertSensitivity" interface="popover" fill="outline">
+                    <ion-select-option value="Low">Low</ion-select-option>
+                    <ion-select-option value="Medium">Medium</ion-select-option>
+                    <ion-select-option value="High">High</ion-select-option>
+                  </ion-select>
+                </div>
+              </div>
+
+              <div class="toggle-list">
+                <label class="toggle-row">
+                  <div class="toggle-meta">
+                    <div class="toggle-title">Auto-remediation</div>
+                    <div class="toggle-desc">Allow agents to execute approved remediations without additional confirmation.</div>
+                  </div>
+                  <ion-toggle formControlName="autoRemediationEnabled"></ion-toggle>
+                </label>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Step 7: Review -->
+        @if (currentStepId() === 'review') {
+          <ion-card class="step-card">
+            <ion-card-content>
+              <div class="step-header">
+                <h2 class="step-title">Review &amp; submit</h2>
+                <p class="step-desc">
+                  Confirm the configuration below. Submitting will begin tenant provisioning,
+                  which typically takes 30-60 seconds.
+                </p>
+              </div>
+
+              <div class="review-grid">
+
+                <div class="review-section">
+                  <div class="review-section-header">
+                    <h3>Organization</h3>
+                    <ion-button fill="clear" color="primary" size="small" (click)="jumpToStep('organization')">
+                      Edit
+                    </ion-button>
+                  </div>
+                  <dl class="review-list">
+                    <div><dt>Legal name</dt><dd>{{ getSummaryValue('organization.legalName') }}</dd></div>
+                    <div><dt>Display name</dt><dd>{{ getSummaryValue('organization.displayName') }}</dd></div>
+                    <div><dt>Tenant code</dt><dd class="mono">{{ getSummaryValue('organization.tenantCode') }}</dd></div>
+                    <div><dt>Tier</dt><dd>{{ getSummaryValue('organization.tierCode') }}</dd></div>
+                    <div><dt>Industry</dt><dd>{{ getSummaryValue('organization.industry') }}</dd></div>
+                    <div><dt>Website</dt><dd>{{ getSummaryValue('organization.websiteUrl') }}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="review-section">
+                  <div class="review-section-header">
+                    <h3>Localization</h3>
+                    <ion-button fill="clear" color="primary" size="small" (click)="jumpToStep('localization')">Edit</ion-button>
+                  </div>
+                  <dl class="review-list">
+                    <div><dt>Currency</dt><dd>{{ getSummaryValue('localization.primaryCurrencyCode') }}</dd></div>
+                    <div><dt>Locale</dt><dd>{{ getSummaryValue('localization.primaryLocale') }}</dd></div>
+                    <div><dt>Timezone</dt><dd>{{ getSummaryValue('localization.primaryTimezone') }}</dd></div>
+                    <div><dt>Date format</dt><dd>{{ getSummaryValue('localization.dateFormat') }}</dd></div>
+                    <div><dt>Fiscal year starts</dt><dd>{{ getSummaryValue('localization.fiscalYearStart') }}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="review-section">
+                  <div class="review-section-header">
+                    <h3>Data residency</h3>
+                    <ion-button fill="clear" color="primary" size="small" (click)="jumpToStep('residency')">Edit</ion-button>
+                  </div>
+                  <dl class="review-list">
+                    <div><dt>Region</dt><dd>{{ getSummaryValue('residency.dataResidencyRegion') }}</dd></div>
+                    <div><dt>GDPR</dt><dd>{{ getSummaryValue('residency.gdprApplicable') }}</dd></div>
+                    <div><dt>UAE PDPL</dt><dd>{{ getSummaryValue('residency.pdplApplicable') }}</dd></div>
+                    <div><dt>HIPAA</dt><dd>{{ getSummaryValue('residency.hipaaApplicable') }}</dd></div>
+                    <div><dt>SOX</dt><dd>{{ getSummaryValue('residency.soxApplicable') }}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="review-section">
+                  <div class="review-section-header">
+                    <h3>Primary admin</h3>
+                    <ion-button fill="clear" color="primary" size="small" (click)="jumpToStep('primary-admin')">Edit</ion-button>
+                  </div>
+                  <dl class="review-list">
+                    <div><dt>Email</dt><dd>{{ getSummaryValue('primaryAdmin.email') }}</dd></div>
+                    <div><dt>Name</dt><dd>{{ getSummaryValue('primaryAdmin.displayName') }}</dd></div>
+                    <div><dt>Invitation</dt><dd>{{ getSummaryValue('primaryAdmin.sendInviteEmail') }}</dd></div>
+                    <div><dt>MFA required</dt><dd>{{ getSummaryValue('primaryAdmin.requireMfa') }}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="review-section review-section-wide">
+                  <div class="review-section-header">
+                    <h3>Integrations</h3>
+                    <ion-button fill="clear" color="primary" size="small" (click)="jumpToStep('integrations')">Edit</ion-button>
+                  </div>
+                  <dl class="review-list">
+                    <div><dt>Selected</dt><dd>{{ getSummaryValue('integrations.selectedProviders') }}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="review-section review-section-wide">
+                  <div class="review-section-header">
+                    <h3>Agent defaults</h3>
+                    <ion-button fill="clear" color="primary" size="small" (click)="jumpToStep('agent-defaults')">Edit</ion-button>
+                  </div>
+                  <dl class="review-list">
+                    <div><dt>Autonomy ceiling</dt><dd>{{ getSummaryValue('agentDefaults.agentAutonomyCeiling') }}</dd></div>
+                    <div><dt>Approval SLA</dt><dd>{{ getSummaryValue('agentDefaults.defaultApprovalSla') }} hours</dd></div>
+                    <div><dt>Anomaly sensitivity</dt><dd>{{ getSummaryValue('agentDefaults.anomalyAlertSensitivity') }}</dd></div>
+                    <div><dt>Auto-remediation</dt><dd>{{ getSummaryValue('agentDefaults.autoRemediationEnabled') }}</dd></div>
+                  </dl>
+                </div>
+
+              </div>
+
+              <div class="submit-note">
+                <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+                <span>
+                  Submitting will provision a new tenant and cannot be undone from this wizard.
+                  You can delete the tenant later from Tenant Management if needed.
+                </span>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        }
+
+      </form>
+
+      <!-- ── Navigation Footer ────────────────────────────────────────── -->
+      <div class="wizard-footer">
+        <div class="wizard-footer-progress" aria-live="polite">
+          <span>Step <strong>{{ currentStepIndex() + 1 }}</strong> of {{ steps.length }}</span>
+          @if (isSaving()) {
+            <span class="saving-indicator">
+              <ion-spinner name="dots"></ion-spinner>
+              <span>Saving draft...</span>
+            </span>
+          }
+        </div>
+
+        <div class="wizard-footer-buttons">
+          @if (canGoBack()) {
+            <ion-button fill="outline" color="medium" (click)="goBack()" [disabled]="isSubmitting()">
+              <ion-icon name="arrow-back-outline" slot="start" aria-hidden="true"></ion-icon>
+              Back
+            </ion-button>
+          }
+
+          @if (!isLastStep()) {
+            <ion-button fill="solid" color="primary" [disabled]="!canProceed()" (click)="goNext()">
+              Continue
+              <ion-icon name="arrow-forward-outline" slot="end" aria-hidden="true"></ion-icon>
+            </ion-button>
+          } @else {
+            <ion-button fill="solid" color="primary" [disabled]="isSubmitting()" (click)="submit()">
+              @if (isSubmitting()) {
+                <ion-spinner name="dots" slot="start"></ion-spinner>
+                Provisioning...
+              } @else {
+                <ion-icon name="rocket-outline" slot="start" aria-hidden="true"></ion-icon>
+                Provision tenant
+              }
+            </ion-button>
+          }
+        </div>
+      </div>
+
+    }
+  </div>
+</ion-content>

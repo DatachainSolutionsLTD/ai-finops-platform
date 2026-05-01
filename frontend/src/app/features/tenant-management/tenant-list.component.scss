@@ -1,0 +1,379 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenant Management List — component styles.
+// All values reference CSS variables from finops_tokens.scss.
+// ─────────────────────────────────────────────────────────────────────────────
+
+:host {
+  display: block;
+  background-color: var(--finops-bg-page);
+}
+
+.page-container {
+  max-width: var(--finops-content-max-width);
+  margin: 0 auto;
+  padding: var(--finops-space-6);
+
+  @media (min-width: 768px) {
+    padding: var(--finops-space-8);
+  }
+}
+
+// ── PageHeader actions slot ──────────────────────────────────────────────
+.header-actions {
+  display: flex;
+  gap: var(--finops-space-3);
+  align-items: center;
+
+  ion-button {
+    --border-radius: var(--finops-radius-md);
+    font-family: var(--finops-font-family);
+    font-weight: var(--finops-font-medium);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
+// ── Summary stat row ─────────────────────────────────────────────────────
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--finops-space-4);
+  padding: var(--finops-space-5) var(--finops-space-6);
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  margin-bottom: var(--finops-space-6);
+
+  @media (max-width: 992px) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--finops-space-4) var(--finops-space-6);
+  }
+
+  @media (max-width: 576px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finops-space-1);
+}
+
+.summary-label {
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-value {
+  font-size: var(--finops-text-2xl);
+  font-weight: var(--finops-font-bold);
+  color: var(--finops-text-primary);
+  line-height: 1.1;
+
+  &.summary-value-success { color: var(--finops-success); }
+  &.summary-value-info    { color: var(--finops-info); }
+  &.summary-value-warning { color: var(--finops-warning); }
+}
+
+// ── Filter toolbar ───────────────────────────────────────────────────────
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-4);
+  margin-bottom: var(--finops-space-4);
+  flex-wrap: wrap;
+}
+
+.searchbar-wrap {
+  flex: 1;
+  min-width: 280px;
+  max-width: 420px;
+
+  ion-searchbar {
+    --background: var(--finops-bg-surface);
+    --color: var(--finops-text-primary);
+    --placeholder-color: var(--finops-text-tertiary);
+    --icon-color: var(--finops-text-tertiary);
+    --border-radius: var(--finops-radius-md);
+    --box-shadow: none;
+    padding: 0;
+    height: 40px;
+    border: 1px solid var(--finops-border-default);
+    border-radius: var(--finops-radius-md);
+  }
+}
+
+.filter-chips {
+  display: flex;
+  gap: var(--finops-space-2);
+  flex-wrap: wrap;
+  align-items: center;
+
+  ion-button {
+    --border-radius: var(--finops-radius-md);
+    font-family: var(--finops-font-family);
+    font-weight: var(--finops-font-medium);
+    font-size: var(--finops-text-sm);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    margin-left: var(--finops-space-2);
+    padding: 0 var(--finops-space-2);
+    border-radius: var(--finops-radius-full);
+    background: var(--finops-brand-primary);
+    color: var(--finops-text-inverse);
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-semibold);
+  }
+}
+
+::ng-deep .filter-popover-list {
+  background: var(--finops-bg-surface);
+  padding: var(--finops-space-2) 0;
+
+  ion-item {
+    --min-height: 40px;
+    --padding-start: var(--finops-space-4);
+    --inner-padding-end: var(--finops-space-4);
+    font-family: var(--finops-font-family);
+    font-size: var(--finops-text-sm);
+  }
+}
+
+// ── Active filter chips ──────────────────────────────────────────────────
+.active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--finops-space-2);
+  margin-bottom: var(--finops-space-4);
+
+  ion-chip {
+    --background: var(--finops-brand-primary-subtle);
+    --color: var(--finops-brand-primary-dark);
+    font-family: var(--finops-font-family);
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-medium);
+    cursor: pointer;
+
+    ion-icon {
+      color: var(--finops-brand-primary-dark);
+      margin-inline-start: var(--finops-space-1);
+    }
+  }
+}
+
+// ── Bulk action bar ──────────────────────────────────────────────────────
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--finops-space-4);
+  padding: var(--finops-space-3) var(--finops-space-4);
+  background-color: var(--finops-brand-primary-subtle);
+  border: 1px solid var(--finops-brand-primary);
+  border-radius: var(--finops-radius-md);
+  margin-bottom: var(--finops-space-4);
+
+  @media (max-width: 576px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.bulk-count {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm);
+  color: var(--finops-brand-primary-dark);
+
+  strong {
+    font-weight: var(--finops-font-bold);
+    font-size: var(--finops-text-base);
+  }
+}
+
+.bulk-actions {
+  display: flex;
+  gap: var(--finops-space-2);
+  flex-wrap: wrap;
+
+  ion-button {
+    --border-radius: var(--finops-radius-md);
+    --background: var(--finops-bg-surface);
+    font-family: var(--finops-font-family);
+    font-weight: var(--finops-font-medium);
+    font-size: var(--finops-text-sm);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
+// ── Grid card ────────────────────────────────────────────────────────────
+.grid-card {
+  margin: 0;
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+  overflow: hidden;
+}
+
+.grid-card-content {
+  padding: 0;
+}
+
+.tenants-grid {
+  width: 100%;
+  min-height: 520px;
+  height: calc(100vh - 480px);
+}
+
+// ── AG Grid cell customizations ──────────────────────────────────────────
+::ng-deep .tenants-grid {
+
+  .tenant-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: var(--finops-leading-tight);
+    padding: var(--finops-space-1) 0;
+  }
+
+  .tenant-name {
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-primary);
+    font-size: var(--finops-text-sm);
+  }
+
+  .tenant-meta {
+    font-size: var(--finops-text-xs);
+    color: var(--finops-text-tertiary);
+    font-family: var(--finops-font-mono);
+    margin-top: 2px;
+  }
+
+  // Tier pills
+  .tier-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px var(--finops-space-2);
+    border-radius: var(--finops-radius-sm);
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .tier-starter      { background: var(--finops-bg-subtle);             color: var(--finops-text-secondary); }
+  .tier-professional { background: var(--finops-brand-primary-subtle);  color: var(--finops-brand-primary-dark); }
+  .tier-enterprise   { background: var(--finops-brand-secondary-subtle); color: var(--finops-brand-secondary-dark); }
+
+  // Status badge wrapper (from StatusBadgeComponent) — inherit via nesting
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px var(--finops-space-2);
+    border-radius: var(--finops-radius-full);
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-semibold);
+    white-space: nowrap;
+
+    &.success { background: var(--finops-success-subtle); color: var(--finops-success-dark); }
+    &.warning { background: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.danger  { background: var(--finops-danger-subtle);  color: var(--finops-danger-dark); }
+    &.info    { background: var(--finops-info-subtle);    color: var(--finops-info-dark); }
+    &.neutral { background: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+  }
+
+  // Quota progress bar
+  .quota-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--finops-space-2);
+    height: 100%;
+  }
+
+  .quota-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--finops-bg-subtle);
+    border-radius: var(--finops-radius-full);
+    overflow: hidden;
+    min-width: 60px;
+  }
+
+  .quota-fill {
+    height: 100%;
+    border-radius: var(--finops-radius-full);
+    transition: width var(--finops-duration-normal) var(--finops-easing-standard);
+
+    &.quota-normal  { background: var(--finops-success); }
+    &.quota-warning { background: var(--finops-warning); }
+    &.quota-danger  { background: var(--finops-danger); }
+  }
+
+  .quota-text {
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-secondary);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  // Critical alerts pill
+  .critical-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 var(--finops-space-2);
+    border-radius: var(--finops-radius-full);
+    background-color: var(--finops-danger-subtle);
+    color: var(--finops-danger-dark);
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-semibold);
+  }
+
+  .critical-zero {
+    color: var(--finops-text-tertiary);
+    font-size: var(--finops-text-sm);
+  }
+
+  // Row-end action button (open detail chevron)
+  .row-action-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--finops-text-tertiary);
+    border-radius: var(--finops-radius-md);
+    cursor: pointer;
+    transition: var(--finops-transition-default);
+
+    &:hover {
+      background: var(--finops-bg-subtle);
+      color: var(--finops-brand-primary);
+      border-color: var(--finops-border-default);
+    }
+  }
+
+  // Row click affordance
+  .ag-row {
+    cursor: pointer;
+  }
+}

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth Shell · FinOps Design System v1.1 Preview</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --finops-brand-primary: #3E6264;
+  --finops-brand-primary-hover: #2F494A;
+  --finops-brand-primary-dark: #1F3132;
+  --finops-brand-primary-subtle: #D3E3E4;
+  --finops-brand-secondary: #423EAF;
+  --finops-brand-secondary-subtle: #D8D7F0;
+  --finops-success: #3E6340;
+  --finops-success-subtle: #D8E8D9;
+  --finops-success-dark: #1F3220;
+  --finops-warning: #C78E49;
+  --finops-warning-subtle: #F8F1E9;
+  --finops-warning-dark: #5C4019;
+  --finops-danger: #95443E;
+  --finops-danger-subtle: #EDD6D3;
+  --finops-danger-dark: #49221F;
+  --finops-info: #30455D;
+  --finops-info-subtle: #CED9E6;
+  --finops-info-dark: #17222F;
+  --finops-bg-page: #FFFFFF;
+  --finops-bg-surface: #FFFFFF;
+  --finops-bg-subtle: #F2F2F2;
+  --finops-bg-muted: #E8E6E5;
+  --finops-text-primary: #262626;
+  --finops-text-secondary: #404040;
+  --finops-text-tertiary: #595959;
+  --finops-text-disabled: #808080;
+  --finops-text-inverse: #FFFFFF;
+  --finops-border-default: #D9D9D9;
+  --finops-border-strong: #BFBFBF;
+  --finops-border-subtle: #F2F2F2;
+  --finops-font-family: 'IBM Plex Sans Condensed','IBM Plex Sans','Arial Narrow',Arial,sans-serif;
+  --finops-font-mono: 'IBM Plex Mono','Courier New',monospace;
+  --finops-text-xs: 0.75rem;
+  --finops-text-sm: 0.875rem;
+  --finops-text-base: 1rem;
+  --finops-text-lg: 1.125rem;
+  --finops-text-xl: 1.25rem;
+  --finops-text-2xl: 1.5rem;
+  --finops-text-3xl: 1.875rem;
+  --finops-space-1: 0.25rem;
+  --finops-space-2: 0.5rem;
+  --finops-space-3: 0.75rem;
+  --finops-space-4: 1rem;
+  --finops-space-5: 1.25rem;
+  --finops-space-6: 1.5rem;
+  --finops-space-8: 2rem;
+  --finops-radius-sm: 0.25rem;
+  --finops-radius-md: 0.5rem;
+  --finops-radius-lg: 0.75rem;
+  --finops-radius-full: 9999px;
+  --finops-shadow-sm: 0 1px 2px rgba(38,38,38,0.04);
+  --finops-shadow-md: 0 2px 8px rgba(38,38,38,0.08);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; font-family: var(--finops-font-family); color: var(--finops-text-primary); }
+
+.preview-banner { background: var(--finops-info-subtle); color: var(--finops-info-dark); padding: var(--finops-space-2) var(--finops-space-4); font-size: var(--finops-text-xs); text-align: center; border-bottom: 1px solid var(--finops-info); position: sticky; top: 0; z-index: 100; }
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  background: var(--finops-border-default);
+  min-height: 100vh;
+}
+@media (max-width: 1200px) {
+  .preview-grid { grid-template-columns: 1fr; }
+}
+
+.screen-wrapper {
+  background: var(--finops-bg-page);
+  position: relative;
+}
+
+.screen-label {
+  position: absolute;
+  top: var(--finops-space-3);
+  left: var(--finops-space-3);
+  background: var(--finops-brand-secondary);
+  color: var(--finops-text-inverse);
+  padding: var(--finops-space-1) var(--finops-space-3);
+  border-radius: var(--finops-radius-sm);
+  font-size: var(--finops-text-xs);
+  font-weight: 600;
+  z-index: 10;
+  letter-spacing: 0.04em;
+}
+
+/* Auth shell */
+.auth-shell {
+  min-height: calc(100vh - 40px);
+  background: radial-gradient(ellipse 1200px 600px at 50% -200px, var(--finops-brand-primary-subtle) 0%, transparent 60%), var(--finops-bg-page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--finops-space-6);
+}
+
+.auth-container { width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: var(--finops-space-6); }
+
+.auth-brand { display: flex; align-items: center; gap: var(--finops-space-3); padding: var(--finops-space-2) 0; }
+.brand-mark { width: 40px; height: 40px; border-radius: var(--finops-radius-md); background: var(--finops-brand-primary); color: var(--finops-text-inverse); display: flex; align-items: center; justify-content: center; }
+.brand-mark svg { width: 22px; height: 22px; }
+.brand-text { font-size: var(--finops-text-2xl); font-weight: 700; color: var(--finops-brand-primary); letter-spacing: -0.02em; }
+
+.auth-card { width: 100%; background: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-md); padding: var(--finops-space-8); }
+
+.auth-header { margin-bottom: var(--finops-space-6); text-align: center; }
+.auth-title { font-size: var(--finops-text-2xl); font-weight: 700; color: var(--finops-text-primary); margin: 0; letter-spacing: -0.01em; line-height: 1.25; }
+.auth-subtitle { font-size: var(--finops-text-sm); color: var(--finops-text-secondary); margin: var(--finops-space-2) 0 0; line-height: 1.6; }
+
+.auth-body { display: flex; flex-direction: column; gap: var(--finops-space-5); }
+
+.auth-footer { display: flex; flex-direction: column; align-items: center; gap: var(--finops-space-2); font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); text-align: center; }
+.auth-footer-links { display: flex; align-items: center; gap: var(--finops-space-2); }
+.auth-footer-links a { color: var(--finops-text-tertiary); text-decoration: none; }
+.auth-footer-links a:hover { color: var(--finops-brand-primary); text-decoration: underline; }
+
+/* Forms */
+form { display: flex; flex-direction: column; gap: var(--finops-space-5); }
+.form-field { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.form-field label { font-size: var(--finops-text-sm); font-weight: 500; color: var(--finops-text-primary); }
+.form-field label .req { color: var(--finops-danger); margin-left: 2px; }
+.field-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--finops-space-2); }
+.field-link { font-size: var(--finops-text-xs); font-weight: 500; color: var(--finops-brand-primary); text-decoration: none; }
+.field-link:hover { color: var(--finops-brand-primary-hover); text-decoration: underline; }
+
+.form-field input {
+  font-family: var(--finops-font-family); font-size: var(--finops-text-sm);
+  color: var(--finops-text-primary); background: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-md);
+  padding: var(--finops-space-3); min-height: 44px; outline: none; width: 100%;
+  transition: border-color 0.15s;
+}
+.form-field input:focus { border-color: var(--finops-brand-primary); box-shadow: 0 0 0 3px var(--finops-brand-primary-subtle); }
+.form-field input::placeholder { color: var(--finops-text-tertiary); }
+
+.password-wrapper { position: relative; }
+.password-toggle { position: absolute; right: var(--finops-space-3); top: 50%; transform: translateY(-50%); background: transparent; border: none; padding: var(--finops-space-1); color: var(--finops-text-tertiary); cursor: pointer; display: flex; align-items: center; border-radius: var(--finops-radius-sm); }
+.password-toggle:hover { color: var(--finops-text-primary); background: var(--finops-bg-subtle); }
+.password-toggle svg { width: 18px; height: 18px; }
+
+.form-field-inline { display: flex; align-items: center; }
+.remember-row { display: flex; align-items: center; gap: var(--finops-space-2); cursor: pointer; font-size: var(--finops-text-sm); color: var(--finops-text-secondary); }
+.remember-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--finops-brand-primary); cursor: pointer; }
+
+.btn-primary {
+  border: 1px solid var(--finops-brand-primary); background: var(--finops-brand-primary);
+  color: var(--finops-text-inverse); border-radius: var(--finops-radius-md);
+  padding: var(--finops-space-3) var(--finops-space-5); font-family: var(--finops-font-family);
+  font-size: var(--finops-text-base); font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--finops-space-2);
+  min-height: 48px; width: 100%; margin-top: var(--finops-space-2);
+}
+.btn-primary:hover { background: var(--finops-brand-primary-hover); }
+.btn-primary svg { width: 18px; height: 18px; }
+
+.btn-outline {
+  border: 1px solid var(--finops-border-strong); background: var(--finops-bg-surface);
+  color: var(--finops-text-primary); border-radius: var(--finops-radius-md);
+  padding: var(--finops-space-3) var(--finops-space-4); font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm); font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--finops-space-2);
+  min-height: 44px; width: 100%;
+}
+.btn-outline:hover { background: var(--finops-bg-subtle); }
+
+/* Divider */
+.auth-divider { display: flex; align-items: center; text-align: center; color: var(--finops-text-tertiary); font-size: var(--finops-text-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--finops-border-default); }
+.auth-divider span { padding: 0 var(--finops-space-3); }
+
+.auth-sso { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.sso-button { display: flex; align-items: center; justify-content: center; gap: var(--finops-space-2); padding: var(--finops-space-3) var(--finops-space-4); border: 1px solid var(--finops-border-default); background: var(--finops-bg-surface); border-radius: var(--finops-radius-md); font-family: var(--finops-font-family); font-size: var(--finops-text-sm); font-weight: 500; color: var(--finops-text-primary); cursor: pointer; min-height: 44px; opacity: 0.5; }
+.sso-button svg { width: 18px; height: 18px; color: var(--finops-text-secondary); }
+.sso-hint { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); text-align: center; }
+
+/* MFA code input */
+.code-input {
+  font-family: var(--finops-font-mono);
+  font-size: var(--finops-text-2xl);
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-align: center;
+  min-height: 64px;
+  padding: var(--finops-space-4) !important;
+}
+
+.code-hint { display: flex; align-items: center; justify-content: center; padding-top: var(--finops-space-1); }
+.timer { display: inline-flex; align-items: center; gap: var(--finops-space-1); padding: var(--finops-space-1) var(--finops-space-3); border-radius: var(--finops-radius-full); background: var(--finops-bg-subtle); color: var(--finops-text-secondary); font-size: var(--finops-text-xs); font-weight: 500; }
+.timer svg { width: 14px; height: 14px; }
+
+.auth-actions { display: flex; justify-content: center; padding-top: var(--finops-space-2); border-top: 1px solid var(--finops-border-subtle); }
+.link-button { display: inline-flex; align-items: center; gap: var(--finops-space-1); background: transparent; border: none; padding: var(--finops-space-2); font-family: var(--finops-font-family); font-size: var(--finops-text-sm); font-weight: 500; color: var(--finops-brand-primary); text-decoration: none; cursor: pointer; border-radius: var(--finops-radius-sm); }
+.link-button:hover { color: var(--finops-brand-primary-hover); background: var(--finops-bg-subtle); }
+.link-button svg { width: 16px; height: 16px; }
+
+/* Confirmation state */
+.confirmation-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--finops-space-5); }
+.confirmation-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary); display: flex; align-items: center; justify-content: center; }
+.confirmation-icon svg { width: 36px; height: 36px; }
+.confirmation-body { display: flex; flex-direction: column; gap: var(--finops-space-3); }
+.confirmation-body p { font-size: var(--finops-text-sm); color: var(--finops-text-secondary); margin: 0; line-height: 1.6; }
+.confirmation-email { font-family: var(--finops-font-mono); font-size: var(--finops-text-base); font-weight: 600; color: var(--finops-text-primary); padding: var(--finops-space-3) var(--finops-space-4); background: var(--finops-bg-subtle); border-radius: var(--finops-radius-md); word-break: break-all; }
+.confirmation-hint { font-size: var(--finops-text-xs) !important; color: var(--finops-text-tertiary) !important; max-width: 320px; margin: 0 auto !important; }
+.confirmation-actions { display: flex; flex-direction: column; align-items: center; gap: var(--finops-space-3); padding-top: var(--finops-space-2); width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="preview-banner">
+  <strong>DESIGN SYSTEM PREVIEW v1.1</strong> · Auth Shell Pattern · Screens 1/2/3 of the pre-authentication flow · Opus 4.6 exemplars
+</div>
+
+<div class="preview-grid">
+
+  <!-- ────────────────── SCREEN 1: LOGIN ────────────────── -->
+  <div class="screen-wrapper">
+    <div class="screen-label">1. LOGIN</div>
+    <div class="auth-shell">
+      <div class="auth-container">
+        <div class="auth-brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div class="brand-text">FinOps</div>
+        </div>
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1 class="auth-title">Sign in to your account</h1>
+            <p class="auth-subtitle">Enter your credentials to access the FinOps platform.</p>
+          </div>
+          <div class="auth-body">
+            <form>
+              <div class="form-field">
+                <label>Email <span class="req">*</span></label>
+                <input type="email" value="admin@example.com" placeholder="you@example.com">
+              </div>
+              <div class="form-field">
+                <div class="field-label-row">
+                  <label>Password <span class="req">*</span></label>
+                  <a href="#" class="field-link">Forgot password?</a>
+                </div>
+                <div class="password-wrapper">
+                  <input type="password" value="••••••••••••" placeholder="Enter your password">
+                  <button type="button" class="password-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="form-field-inline">
+                <label class="remember-row">
+                  <input type="checkbox">
+                  <span>Keep me signed in for 30 days</span>
+                </label>
+              </div>
+              <button type="button" class="btn-primary">
+                Sign in
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </form>
+            <div class="auth-divider"><span>or</span></div>
+            <div class="auth-sso">
+              <button class="sso-button" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+                Continue with SSO
+              </button>
+              <div class="sso-hint">SSO is configured per-tenant by your administrator.</div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-footer">
+          <div class="auth-footer-links">
+            <a>Terms</a><span>·</span><a>Privacy</a><span>·</span><a>Support</a>
+          </div>
+          <div>© 2026 FinOps Platform. All rights reserved.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────────── SCREEN 2: MFA ────────────────── -->
+  <div class="screen-wrapper">
+    <div class="screen-label">2. MFA VERIFICATION</div>
+    <div class="auth-shell">
+      <div class="auth-container">
+        <div class="auth-brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div class="brand-text">FinOps</div>
+        </div>
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1 class="auth-title">Verify your identity</h1>
+            <p class="auth-subtitle">Enter the 6-digit code from your authenticator app.</p>
+          </div>
+          <div class="auth-body">
+            <form>
+              <div class="form-field">
+                <input type="text" class="code-input" value="482 391" maxlength="6" inputmode="numeric">
+                <div class="code-hint">
+                  <div class="timer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Code expires in 4:23</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-primary">
+                Verify and continue
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </form>
+            <div class="auth-actions">
+              <button type="button" class="link-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Back to sign in
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="auth-footer">
+          <div class="auth-footer-links">
+            <a>Terms</a><span>·</span><a>Privacy</a><span>·</span><a>Support</a>
+          </div>
+          <div>© 2026 FinOps Platform. All rights reserved.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────────── SCREEN 3: FORGOT PASSWORD (confirmation state) ────────────────── -->
+  <div class="screen-wrapper">
+    <div class="screen-label">3. FORGOT PASSWORD — CONFIRMATION</div>
+    <div class="auth-shell">
+      <div class="auth-container">
+        <div class="auth-brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div class="brand-text">FinOps</div>
+        </div>
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1 class="auth-title">Check your email</h1>
+            <p class="auth-subtitle">If that email is on file, you'll receive a password reset link shortly.</p>
+          </div>
+          <div class="auth-body">
+            <div class="confirmation-state">
+              <div class="confirmation-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </div>
+              <div class="confirmation-body">
+                <p>We sent a reset link to:</p>
+                <div class="confirmation-email">admin@example.com</div>
+                <p class="confirmation-hint">The link will expire in 30 minutes. If you don't see it, check your spam folder or try another email address.</p>
+              </div>
+              <div class="confirmation-actions">
+                <button type="button" class="btn-outline">Try another email</button>
+                <a href="#" class="link-button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                  Back to sign in
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-footer">
+          <div class="auth-footer-links">
+            <a>Terms</a><span>·</span><a>Privacy</a><span>·</span><a>Support</a>
+          </div>
+          <div>© 2026 FinOps Platform. All rights reserved.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

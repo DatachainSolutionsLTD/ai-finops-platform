@@ -1,0 +1,263 @@
+# =============================================================================
+# Prometheus Recording Rules — Seed Round
+# Scope: Agents A01–A05 + A27 + Platform Infrastructure
+# Scrape Interval: 15s | Evaluation Interval: 30s
+# Labels: tenant_id, agent_type, environment
+# =============================================================================
+# Recording rules pre-compute expensive queries so Grafana dashboards
+# and alerting rules can query pre-aggregated metrics efficiently.
+# =============================================================================
+
+groups:
+
+  # -------------------------------------------------------------------------
+  # GROUP 1: Agent SLI Metrics (RED — Rate, Errors, Duration)
+  # -------------------------------------------------------------------------
+  - name: finops_agent_sli
+    interval: 30s
+    rules:
+
+      # Request rate per agent (requests/second)
+      - record: finops:agent:request_rate:5m
+        expr: |
+          sum by (agent_type, namespace) (
+            rate(http_requests_total{namespace=~"tenant-.*"}[5m])
+          )
+        labels:
+          environment: seed
+
+      # Error rate per agent (5xx responses / total)
+      - record: finops:agent:error_rate:5m
+        expr: |
+          sum by (agent_type, namespace) (
+            rate(http_requests_total{namespace=~"tenant-.*", code=~"5.."}[5m])
+          ) /
+          sum by (agent_type, namespace) (
+            rate(http_requests_total{namespace=~"tenant-.*"}[5m])
+          )
+        labels:
+          environment: seed
+
+      # p50 latency per agent
+      - record: finops:agent:latency_p50:5m
+        expr: |
+          histogram_quantile(0.50,
+            sum by (agent_type, namespace, le) (
+              rate(http_request_duration_seconds_bucket{namespace=~"tenant-.*"}[5m])
+            )
+          )
+
+      # p95 latency per agent
+      - record: finops:agent:latency_p95:5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (agent_type, namespace, le) (
+              rate(http_request_duration_seconds_bucket{namespace=~"tenant-.*"}[5m])
+            )
+          )
+
+      # p99 latency per agent
+      - record: finops:agent:latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            sum by (agent_type, namespace, le) (
+              rate(http_request_duration_seconds_bucket{namespace=~"tenant-.*"}[5m])
+            )
+          )
+
+      # Availability (uptime) per agent — 1 if pod is Ready, 0 otherwise
+      - record: finops:agent:availability:5m
+        expr: |
+          avg by (agent_type, namespace) (
+            kube_pod_status_ready{namespace=~"tenant-.*", condition="true"}
+          )
+
+  # -------------------------------------------------------------------------
+  # GROUP 2: A01 — Data Ingestion Agent Metrics
+  # -------------------------------------------------------------------------
+  - name: finops_a01_ingestion
+    interval: 30s
+    rules:
+      - record: finops:a01:ingestion_runs:1h
+        expr: sum(increase(finops_a01_ingestion_runs_total[1h]))
+
+      - record: finops:a01:records_ingested:1h
+        expr: sum(increase(finops_a01_records_ingested_total[1h]))
+
+      - record: finops:a01:records_quarantined:1h
+        expr: sum(increase(finops_a01_records_quarantined_total[1h]))
+
+      - record: finops:a01:quality_score:avg
+        expr: avg(finops_a01_quality_score{tenant="g42-seed"})
+
+      - record: finops:a01:data_freshness_hours
+        expr: (time() - max(finops_a01_last_success_timestamp)) / 3600
+
+      - record: finops:a01:connector_failure_rate:1h
+        expr: |
+          sum(increase(finops_a01_connector_failures_total[1h])) /
+          clamp_min(sum(increase(finops_a01_ingestion_runs_total[1h])), 1)
+
+      - record: finops:a01:reconciliation_variance_max
+        expr: max(finops_a01_reconciliation_variance_pct{tenant="g42-seed"})
+
+  # -------------------------------------------------------------------------
+  # GROUP 3: A02 — Cost Normalization Agent Metrics
+  # -------------------------------------------------------------------------
+  - name: finops_a02_normalization
+    interval: 30s
+    rules:
+      - record: finops:a02:focus_compliance:current
+        expr: finops_a02_focus_compliance_score{tenant="g42-seed"}
+
+      - record: finops:a02:normalization_throughput:5m
+        expr: sum(rate(finops_a02_records_normalized_total[5m]))
+
+      - record: finops:a02:reconciliation_variance:current
+        expr: finops_a02_reconciliation_variance_pct{tenant="g42-seed"}
+
+      - record: finops:a02:taxonomy_coverage:current
+        expr: finops_a02_taxonomy_coverage_pct{tenant="g42-seed"}
+
+      - record: finops:a02:unattributed_pct:current
+        expr: finops_a02_unattributed_pct{tenant="g42-seed"}
+
+      - record: finops:a02:normalization_duration:avg
+        expr: avg(finops_a02_normalization_duration_seconds)
+
+  # -------------------------------------------------------------------------
+  # GROUP 4: A03 — Allocation Agent Metrics
+  # -------------------------------------------------------------------------
+  - name: finops_a03_allocation
+    interval: 30s
+    rules:
+      - record: finops:a03:coverage_rate:current
+        expr: finops_a03_coverage_rate_pct{tenant="g42-seed"}
+
+      - record: finops:a03:unattributed_cost:current
+        expr: finops_a03_unattributed_cost_sar{tenant="g42-seed"}
+
+      - record: finops:a03:allocation_runs:1h
+        expr: sum(increase(finops_a03_allocation_runs_total[1h]))
+
+      - record: finops:a03:reconciliation_variance:current
+        expr: finops_a03_reconciliation_variance_pct{tenant="g42-seed"}
+
+      - record: finops:a03:active_rules:current
+        expr: finops_a03_active_rules{tenant="g42-seed"}
+
+  # -------------------------------------------------------------------------
+  # GROUP 5: A04 — Reporting & Analytics Agent Metrics
+  # -------------------------------------------------------------------------
+  - name: finops_a04_reporting
+    interval: 30s
+    rules:
+      - record: finops:a04:reports_generated:1h
+        expr: sum(increase(finops_a04_reports_generated_total[1h]))
+
+      - record: finops:a04:report_generation_duration:avg
+        expr: avg(finops_a04_report_generation_duration_seconds)
+
+      - record: finops:a04:nl_queries:1h
+        expr: sum(increase(finops_a04_nl_queries_total[1h]))
+
+      - record: finops:a04:nl_positive_feedback_rate:1d
+        expr: |
+          sum(increase(finops_a04_nl_feedback_total{feedback="Positive"}[24h])) /
+          clamp_min(sum(increase(finops_a04_nl_feedback_total[24h])), 1)
+
+      - record: finops:a04:report_consumption_rate:current
+        expr: finops_a04_report_consumption_rate_pct{tenant="g42-seed"}
+
+      - record: finops:a04:llm_call_duration:avg
+        expr: avg(finops_a04_llm_call_duration_seconds)
+
+      - record: finops:a04:llm_error_rate:5m
+        expr: |
+          sum(rate(finops_a04_llm_calls_total{status="error"}[5m])) /
+          clamp_min(sum(rate(finops_a04_llm_calls_total[5m])), 0.001)
+
+  # -------------------------------------------------------------------------
+  # GROUP 6: A05 — Anomaly Detection Agent Metrics
+  # -------------------------------------------------------------------------
+  - name: finops_a05_anomaly
+    interval: 30s
+    rules:
+      - record: finops:a05:active_anomalies:current
+        expr: finops_a05_active_anomalies_total{tenant="g42-seed"}
+
+      - record: finops:a05:critical_anomalies:current
+        expr: finops_a05_active_anomalies_total{tenant="g42-seed", severity="Critical"}
+
+      - record: finops:a05:mttd_hours:current
+        expr: finops_a05_mttd_hours{tenant="g42-seed"}
+
+      - record: finops:a05:mttr_hours:current
+        expr: finops_a05_mttr_hours{tenant="g42-seed"}
+
+      - record: finops:a05:false_positive_rate:current
+        expr: finops_a05_false_positive_rate_pct{tenant="g42-seed"}
+
+      - record: finops:a05:confirmed_savings:total
+        expr: finops_a05_confirmed_savings_sar_total{tenant="g42-seed"}
+
+      - record: finops:a05:detection_duration:avg
+        expr: avg(finops_a05_detection_duration_seconds)
+
+      - record: finops:a05:alert_delivery_success_rate:1h
+        expr: |
+          sum(increase(finops_a05_alerts_delivered_total{status="Sent"}[1h])) /
+          clamp_min(sum(increase(finops_a05_alerts_delivered_total[1h])), 1)
+
+  # -------------------------------------------------------------------------
+  # GROUP 7: A27 — Orchestrator Metrics
+  # -------------------------------------------------------------------------
+  - name: finops_a27_orchestrator
+    interval: 30s
+    rules:
+      - record: finops:a27:pipeline_runs:1h
+        expr: sum(increase(finops_a27_pipeline_runs_total[1h]))
+
+      - record: finops:a27:pipeline_success_rate:1d
+        expr: |
+          sum(increase(finops_a27_pipeline_runs_total{status="Completed"}[24h])) /
+          clamp_min(sum(increase(finops_a27_pipeline_runs_total[24h])), 1)
+
+      - record: finops:a27:pipeline_duration:avg
+        expr: avg(finops_a27_pipeline_duration_seconds)
+
+      - record: finops:a27:agents_healthy:current
+        expr: sum(finops_a27_agent_health_status == 1)
+
+      - record: finops:a27:agents_unhealthy:current
+        expr: sum(finops_a27_agent_health_status == 0)
+
+  # -------------------------------------------------------------------------
+  # GROUP 8: Infrastructure Metrics (pre-aggregated)
+  # -------------------------------------------------------------------------
+  - name: finops_infrastructure
+    interval: 60s
+    rules:
+      - record: finops:infra:node_cpu_utilization
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      - record: finops:infra:node_memory_utilization
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+      - record: finops:infra:postgres_active_connections
+        expr: pg_stat_activity_count{datname="finops"}
+
+      - record: finops:infra:postgres_query_p95
+        expr: |
+          histogram_quantile(0.95, rate(pg_stat_statements_seconds_bucket{datname="finops"}[5m]))
+
+      - record: finops:infra:redis_memory_pct
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100
+
+      - record: finops:infra:redis_pubsub_channels
+        expr: redis_pubsub_channels
+
+      - record: finops:infra:vault_sealed
+        expr: 1 - vault_core_unsealed

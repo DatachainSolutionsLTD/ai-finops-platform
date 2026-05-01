@@ -1,0 +1,137 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard pattern: PageHeader → KPIs → Narrative → 2-col charts → connector grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Ingestion Status" [subtitle]="subtitle()">
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading ingestion data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load ingestion status"
+        [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key ingestion metrics">
+        <app-kpi-card
+          label="Total connectors"
+          [value]="kpis()!.totalConnectors.value | number"
+          [deltaPercent]="kpis()!.totalConnectors.deltaPercent"
+          [deltaDirection]="kpis()!.totalConnectors.deltaDirection"
+          [sparklineData]="kpis()!.totalConnectors.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Healthy connectors"
+          [value]="kpis()!.healthyConnectors.value | number"
+          [deltaPercent]="kpis()!.healthyConnectors.deltaPercent"
+          [deltaDirection]="kpis()!.healthyConnectors.deltaDirection"
+          [sparklineData]="kpis()!.healthyConnectors.sparkline"
+          [status]="kpis()!.healthyConnectors.value < kpis()!.totalConnectors.value ? 'warning' : 'success'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Records today"
+          [value]="kpis()!.recordsToday.value | number"
+          [deltaPercent]="kpis()!.recordsToday.deltaPercent"
+          [deltaDirection]="kpis()!.recordsToday.deltaDirection"
+          [sparklineData]="kpis()!.recordsToday.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Avg quality score"
+          [value]="kpis()!.avgQualityScore.value | number:'1.1-1'"
+          unit="%"
+          [deltaPercent]="kpis()!.avgQualityScore.deltaPercent"
+          [deltaDirection]="kpis()!.avgQualityScore.deltaDirection"
+          [sparklineData]="kpis()!.avgQualityScore.sparkline"
+          [status]="kpis()!.avgQualityScore.value < 95 ? 'warning' : 'success'">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block
+          [summary]="n.summary"
+          [highlights]="n.highlights"
+          [agentName]="n.agentName"
+          [generatedAt]="n.generatedAt">
+        </app-narrative-block>
+      }
+
+      <!-- 2-col chart grid -->
+      <section class="chart-grid" aria-label="Ingestion charts">
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Daily ingestion volume (14 days)</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="throughputSeries()"
+              [chart]="throughputChart"
+              [xaxis]="throughputXAxis()"
+              [yaxis]="throughputYAxis"
+              [stroke]="throughputStroke"
+              [fill]="throughputFill"
+              [colors]="throughputColors"
+              [tooltip]="throughputTooltip"
+              [dataLabels]="throughputDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Data quality score by source</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="qualitySeries()"
+              [chart]="qualityChart"
+              [xaxis]="qualityXAxis()"
+              [yaxis]="qualityYAxis"
+              [plotOptions]="qualityPlotOptions"
+              [colors]="qualityColors()"
+              [tooltip]="qualityTooltip"
+              [dataLabels]="qualityDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+      <!-- Connector health grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title>Connector health detail</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (connectorRows().length > 0) {
+            <div (click)="onGridClick($event)">
+              <ag-grid-angular
+                class="ag-theme-quartz finops-grid"
+                [rowData]="connectorRows()"
+                [columnDefs]="connectorColDefs"
+                [defaultColDef]="defaultColDef"
+                [pagination]="false"
+                [animateRows]="true"
+                (gridReady)="onGridReady($event)"
+                aria-label="Connector health table">
+              </ag-grid-angular>
+            </div>
+          } @else {
+            <app-empty-state icon="cloud-outline" title="No connector data" description="No connector health data available."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

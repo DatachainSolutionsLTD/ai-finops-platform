@@ -1,0 +1,229 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List pattern: PageHeader → summary row → filter toolbar → AG Grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header
+      title="Pricing & Rate Cards"
+      subtitle="On-premises cost rate cards for normalization and fully-burdened cost calculation">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export rate cards as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+        @if (canCreate()) {
+          <ion-button fill="solid" color="primary" (click)="openCreateModal()">
+            <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+            New rate card
+          </ion-button>
+        }
+      </div>
+    </app-page-header>
+
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Rate card summary">
+        <div class="summary-stat"><div class="summary-label">Total</div><div class="summary-value">{{ s.totalRateCards }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Active</div><div class="summary-value summary-value-success">{{ s.activeRateCards }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Draft</div><div class="summary-value summary-value-info">{{ s.draftRateCards }}</div></div>
+        <div class="summary-stat">
+          <div class="summary-label">Pending effective</div>
+          <div class="summary-value" [class.summary-value-warning]="s.pendingEffective > 0">{{ s.pendingEffective }}</div>
+        </div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading rate cards..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load rate cards" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- Filter toolbar -->
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter rate cards">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search by name or description..." debounce="300" animated="true"
+            [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search rate cards">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-rc-status" fill="outline" color="medium">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-rc-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)">
+                    <ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-rc-type" fill="outline" color="medium">
+            <ion-icon name="cube-outline" slot="start" aria-hidden="true"></ion-icon>
+            Resource type
+            @if (resourceTypeFilter().length > 0) { <span class="filter-count">{{ resourceTypeFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-rc-type" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (t of resourceTypeOptions; track t) {
+                  <ion-item button (click)="toggleTypeFilter(t)">
+                    <ion-checkbox slot="start" [checked]="resourceTypeFilter().includes(t)" [attr.aria-label]="'Filter by type ' + t"></ion-checkbox>
+                    <ion-label>{{ t }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      <!-- Active chips -->
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (s of statusFilter(); track s) {
+            <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove filter ' + s">
+              <ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (t of resourceTypeFilter(); track t) {
+            <ion-chip (click)="toggleTypeFilter(t)" [attr.aria-label]="'Remove filter ' + t">
+              <ion-label>{{ t }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <!-- Bulk action bar -->
+      @if (hasSelection()) {
+        <div class="bulk-action-bar" role="toolbar" aria-label="Bulk actions">
+          <span class="bulk-count" aria-live="polite">{{ selectionCount() }} selected</span>
+          <div class="bulk-actions">
+            @if (canArchive()) {
+              <ion-button fill="outline" color="medium" size="small" (click)="bulkArchive()">
+                <ion-icon name="archive-outline" slot="start" aria-hidden="true"></ion-icon>
+                Archive
+              </ion-button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- AG Grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">{{ total() | number }} rate card{{ total() !== 1 ? 's' : '' }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10, 20, 50, 100]"
+              [animateRows]="true"
+              [rowSelection]="'multiple'"
+              [suppressRowClickSelection]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              (selectionChanged)="onSelectionChanged($event)"
+              aria-label="Rate cards table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="pricetag-outline" title="No rate cards match your filters"
+              description="Try adjusting your search or filter criteria."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>
+
+<!-- ── Create Rate Card Modal ─────────────────────────────────────────────── -->
+<ion-modal [isOpen]="isCreateOpen()" (didDismiss)="closeCreateModal()" [breakpoints]="[0,1]" [initialBreakpoint]="1" class="create-modal" aria-label="Create rate card">
+  <ng-template>
+    <div class="modal-shell">
+      <div class="modal-header">
+        <h2 class="modal-title">New rate card</h2>
+        <ion-button fill="clear" color="medium" (click)="closeCreateModal()" aria-label="Close modal">
+          <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+        </ion-button>
+      </div>
+
+      <form [formGroup]="createForm" class="create-form" (ngSubmit)="submitCreate()">
+
+        <div class="form-field">
+          <label class="field-label" for="rc-name">Name <span class="required-mark" aria-hidden="true">*</span></label>
+          <ion-input id="rc-name" formControlName="name" placeholder="e.g. Standard Compute Q3" [class.input-error]="createFieldError('name')"></ion-input>
+          @if (createFieldError('name'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+        </div>
+
+        <div class="form-field">
+          <label class="field-label" for="rc-desc">Description</label>
+          <ion-textarea id="rc-desc" formControlName="description" placeholder="Short description of this rate card" rows="2"></ion-textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label" for="rc-type">Resource type <span class="required-mark" aria-hidden="true">*</span></label>
+            <ion-select id="rc-type" formControlName="resourceType" interface="popover">
+              @for (t of resourceTypeOptions; track t) { <ion-select-option [value]="t">{{ t }}</ion-select-option> }
+            </ion-select>
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="rc-unit">Pricing unit <span class="required-mark" aria-hidden="true">*</span></label>
+            <ion-select id="rc-unit" formControlName="pricingUnit" interface="popover">
+              @for (u of pricingUnitOptions; track u) { <ion-select-option [value]="u">{{ u }}</ion-select-option> }
+            </ion-select>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label class="field-label" for="rc-rate">Rate (AED) <span class="required-mark" aria-hidden="true">*</span></label>
+          <ion-input id="rc-rate" type="number" formControlName="rate" placeholder="0.00" [class.input-error]="createFieldError('rate')"></ion-input>
+          @if (createFieldError('rate'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+          <p class="field-hint">All rate cards are stored in AED. Costs are converted at normalization time.</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label" for="rc-from">Effective from <span class="required-mark" aria-hidden="true">*</span></label>
+            <ion-input id="rc-from" type="date" formControlName="effectiveFrom" [class.input-error]="createFieldError('effectiveFrom')"></ion-input>
+            @if (createFieldError('effectiveFrom'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+          </div>
+          <div class="form-field">
+            <label class="field-label" for="rc-to">Effective to</label>
+            <ion-input id="rc-to" type="date" formControlName="effectiveTo"></ion-input>
+            <p class="field-hint">Leave empty for open-ended.</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <ion-button fill="outline" color="medium" (click)="closeCreateModal()">Cancel</ion-button>
+          <ion-button fill="solid" color="primary" type="submit" [disabled]="isCreating()">
+            @if (isCreating()) { <ion-spinner name="crescent" aria-label="Creating"></ion-spinner> } @else { Create rate card }
+          </ion-button>
+        </div>
+      </form>
+    </div>
+  </ng-template>
+</ion-modal>

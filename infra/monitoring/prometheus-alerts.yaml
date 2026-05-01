@@ -1,0 +1,256 @@
+# =============================================================================
+# Prometheus Alerting Rules — Production SLAs (Seed Round)
+# Severity: critical (PagerDuty), warning (Slack), info (Dashboard only)
+# Inhibition: Critical suppresses warning for same agent
+# =============================================================================
+# SLA Targets (from FSD NFRs):
+#   Data ingestion latency: < 15 minutes
+#   FOCUS normalization accuracy: > 95%
+#   Cost reconciliation variance: < 0.1%
+#   Dashboard render time: < 3 seconds
+#   Anomaly MTTD: < 4 hours
+#   Agent availability: > 99.5%
+#   Pipeline success rate: > 95%
+# =============================================================================
+
+groups:
+
+  # -------------------------------------------------------------------------
+  # CRITICAL ALERTS — Page via PagerDuty
+  # -------------------------------------------------------------------------
+  - name: finops_critical_alerts
+    rules:
+
+      # Agent pod down for > 5 minutes
+      - alert: AgentDown
+        expr: finops:agent:availability:5m < 0.5
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Agent {{ $labels.agent_type }} is DOWN"
+          description: "Agent {{ $labels.agent_type }} in {{ $labels.namespace }} has < 50% pod availability for 5+ minutes."
+          runbook_url: "https://runbooks.finops.internal/agent-down"
+
+      # Pipeline completely failing
+      - alert: PipelineFailure
+        expr: finops:a27:pipeline_success_rate:1d < 0.5
+        for: 15m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Pipeline success rate below 50%"
+          description: "End-to-end pipeline success rate is {{ $value | humanizePercentage }} over the last 24 hours."
+
+      # Data freshness exceeds SLA (> 24 hours stale)
+      - alert: DataStale
+        expr: finops:a01:data_freshness_hours > 24
+        for: 30m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "Data freshness SLA breach — {{ $value | humanize }}h since last ingestion"
+          description: "No successful ingestion for over 24 hours. SLA target: < 15 minutes."
+
+      # Vault sealed (agents cannot retrieve credentials)
+      - alert: VaultSealed
+        expr: finops:infra:vault_sealed == 1
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "HashiCorp Vault is SEALED"
+          description: "Vault is sealed. All agent credential retrieval will fail within 15 minutes (cache TTL)."
+
+      # PostgreSQL connections near limit
+      - alert: PostgresConnectionExhaustion
+        expr: finops:infra:postgres_active_connections > 180
+        for: 5m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "PostgreSQL connections at {{ $value }}/200 — near exhaustion"
+
+      # Critical anomalies unacknowledged past SLA (2 hours)
+      - alert: CriticalAnomalyUnacknowledged
+        expr: finops:a05:critical_anomalies:current > 0 and (time() - finops_a05_oldest_unacknowledged_critical_timestamp) > 7200
+        for: 5m
+        labels:
+          severity: critical
+          team: finops
+        annotations:
+          summary: "Critical anomaly unacknowledged for > 2 hours"
+          description: "{{ $value }} critical anomalies have exceeded the 2-hour acknowledgement SLA."
+
+  # -------------------------------------------------------------------------
+  # WARNING ALERTS — Slack notification
+  # -------------------------------------------------------------------------
+  - name: finops_warning_alerts
+    rules:
+
+      # Agent error rate elevated
+      - alert: AgentHighErrorRate
+        expr: finops:agent:error_rate:5m > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Agent {{ $labels.agent_type }} error rate {{ $value | humanizePercentage }}"
+          description: "Error rate exceeds 1% for 10+ minutes. Check agent logs."
+
+      # Agent latency elevated
+      - alert: AgentHighLatency
+        expr: finops:agent:latency_p99:5m > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Agent {{ $labels.agent_type }} p99 latency {{ $value | humanizeDuration }}"
+          description: "p99 latency exceeds 500ms SLA for 10+ minutes."
+
+      # Data freshness approaching SLA
+      - alert: DataFreshnessWarning
+        expr: finops:a01:data_freshness_hours > 12
+        for: 15m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "Data freshness degraded — {{ $value | humanize }}h since last ingestion"
+
+      # FOCUS compliance below target
+      - alert: FocusComplianceLow
+        expr: finops:a02:focus_compliance:current < 95
+        for: 30m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "FOCUS compliance score {{ $value }}% — below 95% target"
+
+      # Reconciliation variance exceeds tolerance
+      - alert: ReconciliationVarianceHigh
+        expr: finops:a02:reconciliation_variance:current > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "Cost reconciliation variance {{ $value }}% — exceeds 0.1% tolerance"
+
+      # Allocation coverage low
+      - alert: AllocationCoverageLow
+        expr: finops:a03:coverage_rate:current < 70
+        for: 1h
+        labels:
+          severity: warning
+          team: finops
+        annotations:
+          summary: "Allocation coverage {{ $value }}% — below 70% threshold"
+          description: "Significant unattributed costs. Review allocation rules."
+
+      # Anomaly detection false positive rate high
+      - alert: AnomalyFalsePositiveHigh
+        expr: finops:a05:false_positive_rate:current > 30
+        for: 1h
+        labels:
+          severity: warning
+          team: finops
+        annotations:
+          summary: "Anomaly false positive rate {{ $value }}% — review suppression rules"
+
+      # LLM API errors
+      - alert: LLMApiErrors
+        expr: finops:a04:llm_error_rate:5m > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM API error rate {{ $value | humanizePercentage }} — narratives degraded"
+
+      # Redis memory high
+      - alert: RedisMemoryHigh
+        expr: finops:infra:redis_memory_pct > 80
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Redis memory at {{ $value }}% — eviction risk"
+
+      # Node CPU high
+      - alert: NodeCPUHigh
+        expr: finops:infra:node_cpu_utilization > 85
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Node {{ $labels.instance }} CPU at {{ $value }}%"
+
+      # Pod restarts
+      - alert: AgentPodRestarts
+        expr: increase(kube_pod_container_status_restarts_total{namespace="tenant-g42-seed"}[1h]) > 3
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Pod {{ $labels.pod }} restarted {{ $value }} times in 1 hour"
+
+  # -------------------------------------------------------------------------
+  # INFORMATIONAL ALERTS — Dashboard only
+  # -------------------------------------------------------------------------
+  - name: finops_info_alerts
+    rules:
+
+      - alert: IngestionRunSlow
+        expr: finops_a01_ingestion_run_duration_seconds > 900
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Ingestion run took {{ $value | humanizeDuration }}"
+
+      - alert: NormalizationTaxonomyGaps
+        expr: finops:a02:taxonomy_coverage:current < 98
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "Taxonomy coverage {{ $value }}% — {{ 100 - $value }}% unmapped services"
+
+      - alert: ReportGenerationSlow
+        expr: finops:a04:report_generation_duration:avg > 60
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "Average report generation time {{ $value | humanizeDuration }}"
+
+      - alert: LowReportConsumption
+        expr: finops:a04:report_consumption_rate:current < 30
+        for: 24h
+        labels:
+          severity: info
+        annotations:
+          summary: "Report consumption rate {{ $value }}% — reports may not be reaching stakeholders"
+
+  # -------------------------------------------------------------------------
+  # INHIBITION RULES — Prevent alert storms
+  # -------------------------------------------------------------------------
+  # (Configured in AlertManager, referenced here for documentation)
+  # inhibit_rules:
+  #   - source_matchers: [severity="critical"]
+  #     target_matchers: [severity="warning"]
+  #     equal: [agent_type, namespace]
+  #   - source_matchers: [alertname="AgentDown"]
+  #     target_matchers: [alertname=~"Agent.*"]
+  #     equal: [agent_type]

@@ -1,0 +1,388 @@
+# =============================================================================
+# Chaos Engineering Test Suite — Seed Round
+# Tool: Chaos Mesh (K8s-native chaos engineering)
+# Scope: Agent pod kill recovery, network partition, DB failover
+# Exit Criteria: All agents recover within SLA after disruption
+# =============================================================================
+# Recovery SLAs:
+#   Agent pod kill:       < 60 seconds to Ready
+#   Pipeline recovery:    < 5 minutes (auto-restart via Airflow/A27)
+#   Redis reconnection:   < 30 seconds (Sentinel failover)
+#   Full pipeline resume: < 15 minutes after any single-component failure
+# =============================================================================
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS TEST 1: Agent Pod Kill — Individual Agent Recovery
+# Verifies: PDB honored, pod restarts within 60s, no data loss
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: chaos-agent-pod-kill
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: agent-pod-kill
+    finops.io/stage: seed
+  annotations:
+    description: "Kill one agent pod at a time and verify recovery within 60 seconds"
+spec:
+  action: pod-kill
+  mode: one  # Kill exactly 1 pod matching selector
+  selector:
+    namespaces:
+      - tenant-g42-seed
+    labelSelectors:
+      finops.io/agent-type: A01  # Test each agent individually
+  duration: "10s"
+  scheduler:
+    cron: "@every 24h"  # Daily chaos test (disable in business hours)
+
+---
+# A02 pod kill
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: chaos-a02-pod-kill
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: agent-pod-kill
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A02
+  duration: "10s"
+
+---
+# A03 pod kill
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: chaos-a03-pod-kill
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: agent-pod-kill
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A03
+  duration: "10s"
+
+---
+# A04 pod kill
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: chaos-a04-pod-kill
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: agent-pod-kill
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A04
+  duration: "10s"
+
+---
+# A05 pod kill
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: chaos-a05-pod-kill
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: agent-pod-kill
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A05
+  duration: "10s"
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS TEST 2: Network Partition — Agent ↔ Database Connectivity
+# Verifies: Agent graceful degradation, reconnection, no data corruption
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: chaos-agent-db-partition
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: network-partition
+  annotations:
+    description: "Block agent access to PostgreSQL for 30 seconds. Verify graceful degradation and reconnection."
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      app.kubernetes.io/part-of: finops
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces: [tenant-g42-seed]
+    # Target: all traffic to port 5432 (PostgreSQL)
+  externalTargets:
+    - "0.0.0.0/0"
+  duration: "30s"
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS TEST 3: Network Partition — Agent ↔ Redis Connectivity
+# Verifies: Event bus reconnection, cache miss handling, state recovery
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: chaos-agent-redis-partition
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: network-partition
+  annotations:
+    description: "Block agent access to Redis for 30 seconds. Verify Pub/Sub reconnection and cache rebuild."
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      app.kubernetes.io/part-of: finops
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces: [tenant-g42-seed]
+  duration: "30s"
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS TEST 4: CPU Stress — Agent Under Resource Pressure
+# Verifies: HPA scaling trigger, request queuing, no OOM kills
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: chaos-agent-cpu-stress
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: resource-stress
+  annotations:
+    description: "Consume 80% CPU on A01 pod for 2 minutes. Verify HPA response."
+spec:
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A01
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
+  duration: "2m"
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS TEST 5: Memory Pressure — OOM Resilience
+# Verifies: Pod restart on OOM, data recovery from last checkpoint
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: chaos-agent-memory-stress
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: resource-stress
+  annotations:
+    description: "Consume 90% memory on A02 pod for 1 minute. Verify OOM handling."
+spec:
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A02
+  stressors:
+    memory:
+      workers: 1
+      size: "900Mi"  # Near the 1Gi limit
+  duration: "1m"
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS TEST 6: Orchestrator Kill During Active Pipeline
+# Verifies: In-flight pipeline resumes after A27 restart, no duplicate processing
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: chaos-orchestrator-mid-pipeline
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: orchestrator-recovery
+  annotations:
+    description: |
+      Kill A27 orchestrator while a pipeline is running.
+      Verify: pipeline state persisted in Redis, resumes after A27 restart,
+      no duplicate stage execution (idempotency check).
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces: [tenant-g42-seed]
+    labelSelectors:
+      finops.io/agent-type: A27
+  duration: "10s"
+
+---
+# ---------------------------------------------------------------------------
+# CHAOS WORKFLOW: Full Resilience Test Suite (runs all tests in sequence)
+# ---------------------------------------------------------------------------
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: chaos-full-resilience-suite
+  namespace: tenant-g42-seed
+  labels:
+    chaos-test: full-suite
+  annotations:
+    description: |
+      End-to-end resilience validation. Runs during maintenance window.
+      Expected total duration: ~20 minutes.
+      Expected outcome: all agents recover within SLA, no data loss.
+spec:
+  entry: full-suite
+  templates:
+    - name: full-suite
+      templateType: Serial
+      deadline: 30m
+      children:
+        - agent-a01-kill
+        - wait-recovery-1
+        - agent-a02-kill
+        - wait-recovery-2
+        - agent-a03-kill
+        - wait-recovery-3
+        - agent-a04-kill
+        - wait-recovery-4
+        - agent-a05-kill
+        - wait-recovery-5
+        - orchestrator-kill
+        - wait-recovery-6
+        - cpu-stress-test
+        - wait-recovery-7
+
+    - name: agent-a01-kill
+      templateType: PodChaos
+      deadline: 1m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A01 }
+
+    - name: agent-a02-kill
+      templateType: PodChaos
+      deadline: 1m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A02 }
+
+    - name: agent-a03-kill
+      templateType: PodChaos
+      deadline: 1m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A03 }
+
+    - name: agent-a04-kill
+      templateType: PodChaos
+      deadline: 1m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A04 }
+
+    - name: agent-a05-kill
+      templateType: PodChaos
+      deadline: 1m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A05 }
+
+    - name: orchestrator-kill
+      templateType: PodChaos
+      deadline: 1m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A27 }
+
+    - name: cpu-stress-test
+      templateType: StressChaos
+      deadline: 3m
+      stressChaos:
+        mode: one
+        selector:
+          namespaces: [tenant-g42-seed]
+          labelSelectors: { finops.io/agent-type: A01 }
+        stressors:
+          cpu: { workers: 2, load: 80 }
+        duration: "2m"
+
+    # Recovery wait steps (90 seconds each — exceeds 60s SLA to validate)
+    - name: wait-recovery-1
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }
+    - name: wait-recovery-2
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }
+    - name: wait-recovery-3
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }
+    - name: wait-recovery-4
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }
+    - name: wait-recovery-5
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }
+    - name: wait-recovery-6
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }
+    - name: wait-recovery-7
+      templateType: Suspend
+      deadline: 90s
+      suspend: { duration: "90s" }

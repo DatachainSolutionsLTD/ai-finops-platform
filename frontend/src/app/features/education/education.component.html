@@ -1,0 +1,175 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List pattern: summary row → 3-filter toolbar → AG Grid with completion bars + star ratings -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header
+      title="Education & Training"
+      subtitle="FinOps enablement content, adoption tracking, and completion rates">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export content list as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+        @if (canCreate()) {
+          <ion-button fill="solid" color="primary" aria-label="Add new content">
+            <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+            Add content
+          </ion-button>
+        }
+      </div>
+    </app-page-header>
+
+    <!-- Summary row -->
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Education summary">
+        <div class="summary-stat"><div class="summary-label">Total content</div><div class="summary-value">{{ s.totalContent }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Published</div><div class="summary-value summary-value-success">{{ s.published }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Total enrollments</div><div class="summary-value">{{ s.totalEnrollments | number }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Avg completion</div><div class="summary-value" [class.summary-value-warning]="s.avgCompletionRate < 60">{{ s.avgCompletionRate | number:'1.1-1' }}%</div></div>
+        <div class="summary-stat"><div class="summary-label">Avg rating</div><div class="summary-value summary-value-success">{{ s.avgRating | number:'1.1-1' }} ★</div></div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading education content..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load education content"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- Filter toolbar: Type + Proficiency + Status -->
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter content">
+        <div class="searchbar-wrap">
+          <ion-searchbar
+            placeholder="Search by title or role..."
+            debounce="300"
+            animated="true"
+            [value]="searchText()"
+            (ionInput)="onSearchChange($any($event.detail.value))"
+            aria-label="Search education content">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-edu-type" fill="outline" color="medium">
+            <ion-icon name="videocam-outline" slot="start" aria-hidden="true"></ion-icon>
+            Type
+            @if (typeFilter().length > 0) { <span class="filter-count">{{ typeFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-edu-type" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (t of typeOptions; track t) {
+                  <ion-item button (click)="toggleTypeFilter(t)">
+                    <ion-checkbox slot="start" [checked]="typeFilter().includes(t)" [attr.aria-label]="'Filter by type ' + t"></ion-checkbox>
+                    <ion-label>{{ t.replace(/_/g,' ') }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-edu-prof" fill="outline" color="medium">
+            <ion-icon name="school-outline" slot="start" aria-hidden="true"></ion-icon>
+            Level
+            @if (proficiencyFilter().length > 0) { <span class="filter-count">{{ proficiencyFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-edu-prof" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (p of proficiencyOptions; track p) {
+                  <ion-item button (click)="toggleProficiencyFilter(p)">
+                    <ion-checkbox slot="start" [checked]="proficiencyFilter().includes(p)" [attr.aria-label]="'Filter by level ' + p"></ion-checkbox>
+                    <ion-label>{{ p }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-edu-status" fill="outline" color="medium">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-edu-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)">
+                    <ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      <!-- Active filter chips -->
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (t of typeFilter(); track t) {
+            <ion-chip (click)="toggleTypeFilter(t)" [attr.aria-label]="'Remove filter ' + t">
+              <ion-label>{{ t.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (p of proficiencyFilter(); track p) {
+            <ion-chip (click)="toggleProficiencyFilter(p)" [attr.aria-label]="'Remove level filter ' + p">
+              <ion-label>{{ p }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (s of statusFilter(); track s) {
+            <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove status filter ' + s">
+              <ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <!-- AG Grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">{{ total() | number }} content item{{ total() !== 1 ? 's' : '' }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10,20,50,100]"
+              [animateRows]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              aria-label="Education content table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state
+              icon="book-outline"
+              title="No content matches your filters"
+              description="Try adjusting your search or filter criteria."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

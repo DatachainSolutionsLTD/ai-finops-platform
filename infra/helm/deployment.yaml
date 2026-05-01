@@ -1,0 +1,108 @@
+{{- /* =================================================================== */}}
+{{- /* Deployment template for FinOps agent pods                          */}}
+{{- /* =================================================================== */}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finops-{{ .Values.agent.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "agent-chart.labels" . | nindent 4 }}
+    finops.io/agent-type: {{ .Values.agent.type }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: finops-{{ .Values.agent.name }}
+      finops.io/agent-type: {{ .Values.agent.type }}
+  template:
+    metadata:
+      labels:
+        app: finops-{{ .Values.agent.name }}
+        finops.io/agent-type: {{ .Values.agent.type }}
+        {{- range $k, $v := .Values.commonLabels }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+      annotations:
+        {{- range $k, $v := .Values.podAnnotations }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        {{- range $i, $path := .Values.vault.secretPaths }}
+        vault.hashicorp.com/agent-inject-secret-{{ $i }}: {{ $path | quote }}
+        {{- end }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "agent-chart.serviceAccountName" . }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      containers:
+        - name: {{ .Values.agent.name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: AGENT_TYPE
+              value: {{ .Values.agent.type | quote }}
+            - name: AGENT_VERSION
+              value: {{ .Values.agent.version | quote }}
+            - name: AUTONOMY_LEVEL
+              value: {{ .Values.agent.autonomyLevel | quote }}
+            {{- range $name, $val := .Values.env }}
+            {{- if kindIs "map" $val }}
+            - name: {{ $name }}
+              {{- toYaml $val | nindent 14 }}
+            {{- else }}
+            - name: {{ $name }}
+              value: {{ $val | quote }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finops-{{ .Values.agent.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "agent-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: finops-{{ .Values.agent.name }}
+
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: finops-{{ .Values.agent.name }}-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: finops-{{ .Values.agent.name }}
+{{- end }}
+
+---
+{{- /* Per-agent values overrides (reference) */}}
+{{- /* Deploy with: helm install finops-a01 ./agent-chart -f values-a01.yaml */}}

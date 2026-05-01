@@ -1,0 +1,345 @@
+openapi: 3.1.0
+info:
+  title: Cost Normalization Agent API (A02)
+  description: |
+    REST API for the Cost Normalization Agent — manages normalization runs,
+    service taxonomy, exchange rates, FOCUS compliance, and quality monitoring.
+    Domain: Ingestion (shared with A01). Seed Round scope.
+  version: 1.0.0
+servers:
+  - url: /api/v1/normalization
+security:
+  - BearerAuth: []
+tags:
+  - name: Normalization Runs
+  - name: Service Taxonomy
+  - name: Exchange Rates
+  - name: Quality
+  - name: Health
+
+paths:
+  /runs:
+    get:
+      tags: [Normalization Runs]
+      summary: List normalization pipeline runs
+      operationId: listNormalizationRuns
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: source_run_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [Running, Completed, Partial, Failed, Quarantined] } }
+        - { name: start_after, in: query, schema: { type: string, format: date-time } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/NormalizationRun' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  /runs/{run_id}:
+    get:
+      tags: [Normalization Runs]
+      summary: Get normalization run details with reconciliation
+      operationId: getNormalizationRun
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NormalizationRun' }
+
+  /runs/{run_id}/re-normalize:
+    post:
+      tags: [Normalization Runs]
+      summary: Trigger re-normalization for a specific ingestion run
+      operationId: reNormalize
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, enum: [Rate_Card_Update, Exchange_Rate_Update, Taxonomy_Update, Manual_Request] }
+      responses:
+        '202':
+          description: Re-normalization queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_run_id: { type: string, format: uuid }
+                  status: { type: string, const: Running }
+
+  /taxonomy:
+    get:
+      tags: [Service Taxonomy]
+      summary: List service taxonomy mappings
+      operationId: listTaxonomy
+      parameters:
+        - { name: provider, in: query, schema: { type: string, enum: [AWS, Azure, GCP, OCI] } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: is_active, in: query, schema: { type: boolean, default: true } }
+        - { name: search, in: query, schema: { type: string }, description: "Search source or normalized service name" }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/TaxonomyMapping' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+                  summary:
+                    type: object
+                    properties:
+                      total_mappings: { type: integer }
+                      active_mappings: { type: integer }
+                      providers_covered: { type: array, items: { type: string } }
+
+    post:
+      tags: [Service Taxonomy]
+      summary: Create or update a taxonomy mapping
+      operationId: upsertTaxonomy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaxonomyMappingRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxonomyMapping' }
+        '409':
+          description: Mapping already exists for this provider+source_service_name
+
+  /taxonomy/gaps:
+    get:
+      tags: [Service Taxonomy]
+      summary: List unmapped service names requiring resolution
+      operationId: listTaxonomyGaps
+      parameters:
+        - { name: provider, in: query, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gaps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider: { type: string }
+                        source_service_name: { type: string }
+                        first_seen: { type: string, format: date-time }
+                        record_count: { type: integer }
+                        estimated_cost_sar: { type: number }
+
+  /exchange-rates:
+    get:
+      tags: [Exchange Rates]
+      summary: List configured exchange rates
+      operationId: listExchangeRates
+      parameters:
+        - { name: source_currency, in: query, schema: { type: string } }
+        - { name: effective_date, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ExchangeRate' }
+
+    post:
+      tags: [Exchange Rates]
+      summary: Create or update an exchange rate
+      operationId: upsertExchangeRate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExchangeRateRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExchangeRate' }
+
+  /health/summary:
+    get:
+      tags: [Health]
+      summary: Get normalization health summary (dashboard cards)
+      operationId: getNormalizationHealth
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs_last_24h: { type: integer }
+                  success_rate_pct: { type: number }
+                  avg_duration_seconds: { type: integer }
+                  focus_compliance_score: { type: number }
+                  unattributed_cost_pct: { type: number }
+                  rate_card_coverage_pct: { type: number }
+                  taxonomy_gap_count: { type: integer }
+
+  /quality/focus-compliance:
+    get:
+      tags: [Quality]
+      summary: Get FOCUS compliance report for a billing period
+      operationId: getFocusCompliance
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: billing_period, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  billing_period: { type: string, format: date }
+                  overall_score: { type: number }
+                  field_completeness:
+                    type: object
+                    additionalProperties: { type: number }
+                  records_total: { type: integer }
+                  records_compliant: { type: integer }
+                  records_non_compliant: { type: integer }
+                  top_issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field: { type: string }
+                        issue: { type: string }
+                        affected_records: { type: integer }
+
+  /audit-log:
+    get:
+      tags: [Health]
+      summary: List normalization audit log entries
+      operationId: listNormalizationAuditLog
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: event_type, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { type: object } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total_items: { type: integer }
+        total_pages: { type: integer }
+
+    NormalizationRun:
+      type: object
+      properties:
+        run_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        source_run_id: { type: string, format: uuid }
+        connector_id: { type: string, format: uuid }
+        source_type: { type: string }
+        trigger_type: { type: string }
+        start_timestamp: { type: string, format: date-time }
+        end_timestamp: { type: string, format: date-time }
+        status: { type: string }
+        records_input: { type: integer }
+        records_normalized: { type: integer }
+        records_quarantined: { type: integer }
+        reconciliation_source_sar: { type: number }
+        reconciliation_output_sar: { type: number }
+        reconciliation_variance_pct: { type: number }
+        quality_score: { type: number }
+        focus_compliance_score: { type: number }
+        unattributed_count: { type: integer }
+        taxonomy_gap_count: { type: integer }
+        duration_seconds: { type: integer }
+        pipeline_version: { type: string }
+        rate_card_version: { type: string }
+        taxonomy_version: { type: string }
+
+    TaxonomyMapping:
+      type: object
+      properties:
+        mapping_id: { type: string, format: uuid }
+        provider: { type: string }
+        source_service_name: { type: string }
+        normalized_service_name: { type: string }
+        normalized_service_category: { type: string }
+        is_active: { type: boolean }
+        created_date: { type: string, format: date-time }
+        last_modified_date: { type: string, format: date-time }
+
+    TaxonomyMappingRequest:
+      type: object
+      required: [provider, source_service_name, normalized_service_name, normalized_service_category]
+      properties:
+        provider: { type: string, enum: [AWS, Azure, GCP, OCI] }
+        source_service_name: { type: string, maxLength: 300 }
+        normalized_service_name: { type: string, maxLength: 200 }
+        normalized_service_category: { type: string, enum: [Compute, Storage, Database, Network, GPU, Serverless, Platform, Security, Analytics, AI_ML, Other] }
+
+    ExchangeRate:
+      type: object
+      properties:
+        rate_id: { type: string, format: uuid }
+        source_currency: { type: string }
+        target_currency: { type: string }
+        exchange_rate: { type: number }
+        effective_from: { type: string, format: date }
+        effective_to: { type: string, format: date }
+
+    ExchangeRateRequest:
+      type: object
+      required: [source_currency, exchange_rate, effective_from]
+      properties:
+        source_currency: { type: string, minLength: 3, maxLength: 3 }
+        target_currency: { type: string, default: SAR }
+        exchange_rate: { type: number, exclusiveMinimum: 0 }
+        effective_from: { type: string, format: date }
+        effective_to: { type: string, format: date }

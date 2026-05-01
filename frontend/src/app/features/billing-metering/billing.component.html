@@ -1,0 +1,55 @@
+<!-- FinOps Platform Design System v1.1 — Billing & Subscription Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Billing & Subscription" [subtitle]="subtitle()">
+      @if (hasData()) {
+        <div slot="meta">
+          <span class="plan-chip">{{ dashboard()!.tier }}</span>
+          <span class="renewal-chip" [class]="billingStatusClass()">Renews {{ renewalDate() }}</span>
+        </div>
+      }
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading billing data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load billing" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <!-- KPI row -->
+      <section class="kpi-row" aria-label="Billing key metrics">
+        <app-kpi-card label="Month-to-date spend" [value]="kpis()!.currentMonthSpend.value | number:'1.0-0'" [unit]="kpis()!.currentMonthSpend.currency" [deltaPercent]="kpis()!.currentMonthSpend.deltaPercent" [deltaDirection]="kpis()!.currentMonthSpend.deltaDirection" [sparklineData]="kpis()!.currentMonthSpend.sparkline" status="neutral"></app-kpi-card>
+
+        <!-- FP usage with inline progress bar -->
+        <div class="kpi-card-fp">
+          <span class="kpi-label">Platform units used</span>
+          <span class="kpi-value">{{ kpis()!.fpConsumed.value | number:'1.0-0' }}</span>
+          <div class="fp-bar-track" [attr.aria-label]="fpPct() + '% of quota used'">
+            <div class="fp-bar-fill" [class]="fpPct() >= 90 ? 'fp-danger' : fpPct() >= 70 ? 'fp-warn' : 'fp-ok'" [style.width.%]="fpPct()"></div>
+          </div>
+          <span class="fp-meta">{{ fpPct() | number:'1.1-1' }}% of {{ kpis()!.fpConsumed.quota | number }} quota</span>
+        </div>
+
+        <app-kpi-card label="Active users" [value]="kpis()!.activeUsers.value + ' / ' + kpis()!.activeUsers.quota" [deltaPercent]="kpis()!.activeUsers.deltaPercent" [deltaDirection]="kpis()!.activeUsers.deltaDirection" [sparklineData]="kpis()!.activeUsers.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Days to renewal" [value]="kpis()!.daysToRenewal.value | number" [sparklineData]="kpis()!.daysToRenewal.sparkline" [status]="kpis()!.daysToRenewal.value < 30 ? 'warning' : 'neutral'"></app-kpi-card>
+      </section>
+
+      <!-- Full-width stacked spend bar -->
+      <ion-card class="chart-card-full">
+        <ion-card-header><ion-card-title>Monthly spend breakdown</ion-card-title></ion-card-header>
+        <ion-card-content>
+          <apx-chart [series]="usageSeries()" [chart]="usageChart" [xaxis]="usageXAxis()" [yaxis]="usageYAxis" [plotOptions]="usagePlotOptions" [colors]="usageColors" [tooltip]="usageTooltip" [dataLabels]="usageDataLabels" [legend]="usageLegend" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Invoice history -->
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Invoice history</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (invoiceRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="invoiceRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Invoice history table"></ag-grid-angular>
+          } @else { <app-empty-state icon="receipt-outline" title="No invoices yet" description="Your invoice history will appear here once billing begins."></app-empty-state> }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

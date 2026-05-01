@@ -1,0 +1,79 @@
+// FinOps Platform Design System v1.1 — License & SaaS List — tokens only.
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+.header-actions { display: flex; gap: var(--finops-space-3); ion-button { --border-radius: var(--finops-radius-md); text-transform: none; letter-spacing: 0; } }
+
+.summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--finops-space-4); padding: var(--finops-space-5) var(--finops-space-6); background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); margin-bottom: var(--finops-space-6); @media (max-width: 992px) { grid-template-columns: repeat(3, 1fr); } @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } }
+.summary-stat  { display: flex; flex-direction: column; gap: var(--finops-space-1); }
+.summary-label { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.summary-value { font-size: var(--finops-text-2xl); font-weight: var(--finops-font-bold); color: var(--finops-text-primary); line-height: 1.1;
+  &.summary-value-warning { color: var(--finops-warning-dark); }
+  &.summary-value-danger  { color: var(--finops-danger); }
+}
+
+.filter-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--finops-space-3); margin-bottom: var(--finops-space-4); }
+.searchbar-wrap { flex: 1 1 280px; min-width: 200px; }
+.filter-chips   { display: flex; flex-wrap: wrap; gap: var(--finops-space-2); align-items: center; }
+.filter-count   { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 var(--finops-space-1); margin-left: var(--finops-space-2); background-color: var(--finops-brand-primary); color: var(--finops-text-inverse); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-bold); }
+.filter-popover-list { min-width: 200px; ion-item { --padding-start: var(--finops-space-3); font-size: var(--finops-text-sm); } }
+.active-chips { display: flex; flex-wrap: wrap; gap: var(--finops-space-2); margin-bottom: var(--finops-space-4); ion-chip { --background: var(--finops-brand-primary-subtle); --color: var(--finops-brand-primary); border-radius: var(--finops-radius-full); font-size: var(--finops-text-sm); cursor: pointer; } }
+
+.grid-card { margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; } }
+.grid-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); }
+.grid-content{ padding: var(--finops-space-4) 0 0 0; }
+.finops-grid { width: 100%; height: calc(100vh - 380px); min-height: 300px; }
+
+:host ::ng-deep {
+  .lic-cell    { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 2px; }
+  .lic-vendor  { font-size: var(--finops-text-xs); font-weight: var(--finops-font-semibold); color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .lic-product { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+
+  .type-chip { display: inline-flex; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); background-color: var(--finops-bg-subtle); color: var(--finops-text-secondary);
+    &.type-saas-seat        { background-color: var(--finops-brand-primary-subtle);   color: var(--finops-brand-primary); }
+    &.type-byol             { background-color: var(--finops-success-subtle);          color: var(--finops-success); }
+    &.type-enterprise-agreement { background-color: var(--finops-info-subtle);         color: var(--finops-info); }
+    &.type-perpetual        { background-color: var(--finops-bg-muted);               color: var(--finops-text-secondary); }
+    &.type-subscription     { background-color: var(--finops-brand-secondary-subtle); color: var(--finops-brand-secondary); }
+  }
+
+  .status-badge { display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.success { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.danger  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+    &.warning { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.neutral { background-color: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+  }
+
+  .util-cell  { display: flex; align-items: center; gap: var(--finops-space-2); height: 100%; }
+  .util-track { flex: 1; height: 6px; background-color: var(--finops-border-default); border-radius: var(--finops-radius-full); overflow: hidden; }
+  .util-fill  { height: 100%; border-radius: var(--finops-radius-full);
+    &.util-ok   { background-color: var(--finops-success); }
+    &.util-warn { background-color: var(--finops-warning); }
+    &.util-low  { background-color: var(--finops-danger); }
+    &.util-over { background-color: var(--finops-danger); }
+  }
+  .util-label { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); min-width: 40px;
+    &.util-ok   { color: var(--finops-success); }
+    &.util-warn { color: var(--finops-warning-dark); }
+    &.util-low  { color: var(--finops-danger); }
+    &.util-over { color: var(--finops-danger); font-weight: var(--finops-font-bold); }
+  }
+
+  .amount-cell { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .waste-cell  { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-warning-dark); }
+  .waste-zero  { color: var(--finops-text-disabled); font-size: var(--finops-text-sm); }
+
+  .contract-date   { font-size: var(--finops-text-sm); color: var(--finops-text-primary); }
+  .renewal-urgent  { color: var(--finops-danger); font-weight: var(--finops-font-bold); }
+  .renewal-warn    { color: var(--finops-warning-dark); font-weight: var(--finops-font-medium); }
+  .no-date         { font-size: var(--finops-text-sm); color: var(--finops-text-tertiary); font-style: italic; }
+
+  .group-pill { display: inline-flex; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.grp-qw { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.grp-st { background-color: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary); }
+    &.grp-hk { background-color: var(--finops-bg-subtle); color: var(--finops-text-tertiary); }
+  }
+
+  .ahb-applied { font-size: var(--finops-text-xs); color: var(--finops-success); font-weight: var(--finops-font-medium); }
+  .ahb-missed  { font-size: var(--finops-text-xs); color: var(--finops-warning-dark); font-weight: var(--finops-font-bold); }
+  .ahb-na      { font-size: var(--finops-text-sm); color: var(--finops-text-disabled); }
+}

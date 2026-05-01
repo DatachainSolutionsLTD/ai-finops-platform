@@ -1,0 +1,47 @@
+<!-- FinOps Platform Design System v1.1 — Container Optimizer Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Container Optimizer" [subtitle]="subtitle()"></app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading container data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key container optimization metrics">
+        <app-kpi-card label="Container spend" [value]="kpis()!.totalContainerSpend.value | number:'1.0-0'" [unit]="kpis()!.totalContainerSpend.currency" [deltaPercent]="kpis()!.totalContainerSpend.deltaPercent" [deltaDirection]="kpis()!.totalContainerSpend.deltaDirection" [sparklineData]="kpis()!.totalContainerSpend.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Identified savings" [value]="kpis()!.identifiedSavings.value | number:'1.0-0'" [unit]="kpis()!.identifiedSavings.currency" [deltaPercent]="kpis()!.identifiedSavings.deltaPercent" [deltaDirection]="kpis()!.identifiedSavings.deltaDirection" [sparklineData]="kpis()!.identifiedSavings.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Avg cluster score" [value]="kpis()!.avgClusterScore.value | number:'1.0-0'" unit="/100" [deltaPercent]="kpis()!.avgClusterScore.deltaPercent" [deltaDirection]="kpis()!.avgClusterScore.deltaDirection" [sparklineData]="kpis()!.avgClusterScore.sparkline" [status]="kpis()!.avgClusterScore.value >= 80 ? 'success' : kpis()!.avgClusterScore.value >= 50 ? 'warning' : 'danger'"></app-kpi-card>
+        <app-kpi-card label="Pending recommendations" [value]="kpis()!.pendingRecs.value | number" [deltaPercent]="kpis()!.pendingRecs.deltaPercent" [deltaDirection]="kpis()!.pendingRecs.deltaDirection" [sparklineData]="kpis()!.pendingRecs.sparkline" [status]="kpis()!.pendingRecs.value > 0 ? 'warning' : 'success'"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <section class="chart-grid" aria-label="Container optimization charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Savings pipeline</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="pipelineSeries()" [chart]="pipelineChart" [xaxis]="pipelineXAxis()" [yaxis]="pipelineYAxis" [plotOptions]="pipelinePlotOptions" [colors]="pipelineColors" [tooltip]="pipelineTooltip" [dataLabels]="pipelineDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Cluster optimization scores</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="clusterSeries()" [chart]="clusterChart" [xaxis]="clusterXAxis()" [yaxis]="clusterYAxis" [plotOptions]="clusterPlotOptions" [colors]="clusterColors()" [tooltip]="clusterTooltip" [dataLabels]="clusterDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Pod rightsizing recommendations</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (podRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="podRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Pod rightsizing table"></ag-grid-angular>
+          } @else {
+            <app-empty-state icon="cube-outline" title="No rightsizing opportunities" description="All pods are well-sized for their workloads."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

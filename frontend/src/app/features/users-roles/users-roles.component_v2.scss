@@ -1,0 +1,31 @@
+// FinOps Platform Design System v1.1 — Updated v2
+// Shared library partials now imported via global styles.scss:
+//   @use 'styles/page-container'  — :host, .page-container, .header-actions
+//   @use 'styles/list-chrome'     — .summary-row, .filter-toolbar, .grid-card, .bulk-action-bar
+//   @use 'styles/ag-grid-cells'   — all ::ng-deep cell renderer styles
+//   @use 'styles/modals'          — .modal-shell, .action-footer
+// Only screen-specific overrides remain below.
+// ─────────────────────────────────────────────────────────────────────────────
+:host ::ng-deep {
+  .role-badge { display: inline-flex; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.role-admin   { background-color: var(--finops-danger-subtle);          color: var(--finops-danger); }
+    &.role-analyst { background-color: var(--finops-brand-primary-subtle);   color: var(--finops-brand-primary); }
+    &.role-finance { background-color: var(--finops-success-subtle);         color: var(--finops-success); }
+    &.role-eng     { background-color: var(--finops-info-subtle);            color: var(--finops-info); }
+    &.role-exec    { background-color: var(--finops-brand-secondary-subtle); color: var(--finops-brand-secondary); }
+    &.role-audit   { background-color: var(--finops-warning-subtle);         color: var(--finops-warning-dark); }
+    &.role-read    { background-color: var(--finops-bg-subtle);              color: var(--finops-text-tertiary); }
+  }
+}
+// Modal
+ion-modal.invite-modal { --width: 440px; --height: auto; --max-height: 85vh; --border-radius: var(--finops-radius-lg); @media (max-width: 576px) { --width: 100%; } }
+.modal-shell  { padding: var(--finops-space-6); background-color: var(--finops-bg-surface); display: flex; flex-direction: column; gap: var(--finops-space-5); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; }
+.modal-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-xl); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0; }
+.invite-form  { display: flex; flex-direction: column; gap: var(--finops-space-5); }
+.form-field   { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.field-label  { font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); color: var(--finops-text-primary); }
+.required-mark{ color: var(--finops-danger); margin-left: var(--finops-space-1); }
+.field-error  { font-size: var(--finops-text-xs); color: var(--finops-danger); margin: 0; }
+.input-error  { --border-color: var(--finops-danger); }
+.modal-footer { display: flex; justify-content: flex-end; gap: var(--finops-space-3); padding-top: var(--finops-space-4); border-top: 1px solid var(--finops-border-default); }

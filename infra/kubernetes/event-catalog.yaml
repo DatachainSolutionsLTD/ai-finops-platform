@@ -1,0 +1,567 @@
+# =============================================================================
+# Seed Event Catalog — Inter-Agent Event Registry
+# Scope:  Agents A01–A05 (Understand Layer) + A27 Skeleton
+# Bus:    Redis Pub/Sub (Seed) → Kafka (Angel migration — config only)
+# Format: YAML registry with JSON Schema validation
+# =============================================================================
+# Topic Naming Convention (Kafka-compatible, used on Redis channels):
+#   finops.{domain}.{event-type}.v{version}
+#   Partition key: tenant_id (implicit in Redis; explicit in Kafka)
+#
+# Consumer Group Convention (Angel+):
+#   finops.{agent-type}.{topic}.consumer
+# =============================================================================
+
+events:
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN: ingestion  (Producer: A01 — Data Ingestion Agent)
+  # ---------------------------------------------------------------------------
+
+  - event_name: ingestion.run.completed
+    event_id: EVT-A01-001
+    version: 1
+    topic: finops.ingestion.run-completed.v1
+    producer: A01
+    consumers: [A02, A27]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published when an ingestion pipeline run completes (success or partial).
+      Triggers A02 normalization. Carries full run summary for audit.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, run_id,
+                 connector_id, source_type, status, records_received,
+                 records_validated, records_quarantined, pipeline_version]
+      properties:
+        event_id:            { type: string, format: uuid }
+        event_type:          { type: string, const: "ingestion.run.completed" }
+        event_timestamp:     { type: string, format: date-time }
+        tenant_id:           { type: string, format: uuid }
+        run_id:              { type: string, format: uuid }
+        connector_id:        { type: string, format: uuid }
+        source_type:         { type: string, enum: [AWS, Azure, GCP, OCI, VMware,
+                               Kubernetes, OpenShift, OpenStack, GPU_DCGM,
+                               ERP, ITSM, CMDB, Manual] }
+        status:              { type: string, enum: [Completed, Partial, Quarantined] }
+        records_received:    { type: integer, minimum: 0 }
+        records_validated:   { type: integer, minimum: 0 }
+        records_quarantined: { type: integer, minimum: 0 }
+        cost_total_source:   { type: number }
+        billing_period:      { type: string, format: date }
+        pipeline_version:    { type: string }
+        quality_score:       { type: number, minimum: 0, maximum: 100 }
+
+  - event_name: ingestion.run.failed
+    event_id: EVT-A01-002
+    version: 1
+    topic: finops.ingestion.run-failed.v1
+    producer: A01
+    consumers: [A27, A05]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_ERROR
+    description: >
+      Published when an ingestion pipeline run fails after all retries exhausted.
+      Triggers orchestrator alerting and anomaly detection data-gap awareness.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, run_id,
+                 connector_id, error_type, error_detail]
+      properties:
+        event_id:        { type: string, format: uuid }
+        event_type:      { type: string, const: "ingestion.run.failed" }
+        event_timestamp: { type: string, format: date-time }
+        tenant_id:       { type: string, format: uuid }
+        run_id:          { type: string, format: uuid }
+        connector_id:    { type: string, format: uuid }
+        source_type:     { type: string }
+        error_type:      { type: string }
+        error_detail:    { type: string, maxLength: 4000 }
+        retry_count:     { type: integer }
+
+  - event_name: ingestion.schema.changed
+    event_id: EVT-A01-003
+    version: 1
+    topic: finops.ingestion.schema-changed.v1
+    producer: A01
+    consumers: [A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_DIFF
+    description: >
+      Published when A01 detects a schema change in a source data feed.
+      Orchestrator may pause downstream processing until resolved.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 connector_id, change_type]
+      properties:
+        event_id:         { type: string, format: uuid }
+        event_type:       { type: string, const: "ingestion.schema.changed" }
+        event_timestamp:  { type: string, format: date-time }
+        tenant_id:        { type: string, format: uuid }
+        connector_id:     { type: string, format: uuid }
+        change_type:      { type: string, enum: [Additive, Breaking] }
+        schema_diff:      { type: object }
+        auto_resolved:    { type: boolean }
+
+  - event_name: ingestion.enrichment.updated
+    event_id: EVT-A01-004
+    version: 1
+    topic: finops.ingestion.enrichment-updated.v1
+    producer: A01
+    consumers: [A02, A03]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE
+    description: >
+      Published when enterprise enrichment data (CMDB, ERP, ITSM) is refreshed.
+      Triggers A02 re-normalization and A03 allocation rule re-evaluation.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, enrichment_source]
+      properties:
+        event_id:            { type: string, format: uuid }
+        event_type:          { type: string, const: "ingestion.enrichment.updated" }
+        event_timestamp:     { type: string, format: date-time }
+        tenant_id:           { type: string, format: uuid }
+        enrichment_source:   { type: string, enum: [ERP, ITSM, CMDB] }
+        records_updated:     { type: integer }
+
+  - event_name: ingestion.quality.warning
+    event_id: EVT-A01-005
+    version: 1
+    topic: finops.ingestion.quality-warning.v1
+    producer: A01
+    consumers: [A05, A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_DETAIL
+    description: >
+      Published when data quality score drops below threshold or
+      reconciliation variance exceeds tolerance.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, run_id,
+                 warning_type]
+      properties:
+        event_id:         { type: string, format: uuid }
+        event_type:       { type: string, const: "ingestion.quality.warning" }
+        event_timestamp:  { type: string, format: date-time }
+        tenant_id:        { type: string, format: uuid }
+        run_id:           { type: string, format: uuid }
+        warning_type:     { type: string, enum: [Low_Quality_Score,
+                            Reconciliation_Variance, High_Quarantine_Rate] }
+        quality_score:    { type: number }
+        variance_pct:     { type: number }
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN: normalization  (Producer: A02 — Cost Normalization Agent)
+  # ---------------------------------------------------------------------------
+
+  - event_name: normalization.run.completed
+    event_id: EVT-A02-001
+    version: 1
+    topic: finops.normalization.run-completed.v1
+    producer: A02
+    consumers: [A03, A04, A05, A27]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published when normalization pipeline completes. Primary trigger for
+      A03 allocation, A04 reporting refresh, A05 anomaly detection scan.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, run_id,
+                 source_run_id, status, records_normalized, billing_period]
+      properties:
+        event_id:               { type: string, format: uuid }
+        event_type:             { type: string, const: "normalization.run.completed" }
+        event_timestamp:        { type: string, format: date-time }
+        tenant_id:              { type: string, format: uuid }
+        run_id:                 { type: string, format: uuid }
+        source_run_id:          { type: string, format: uuid }
+        status:                 { type: string, enum: [Completed, Partial] }
+        records_normalized:     { type: integer }
+        records_quarantined:    { type: integer }
+        total_cost_sar:         { type: number }
+        billing_period:         { type: string, format: date }
+        focus_compliance_score: { type: number, minimum: 0, maximum: 100 }
+        unattributed_pct:       { type: number }
+
+  - event_name: normalization.taxonomy.gap
+    event_id: EVT-A02-002
+    version: 1
+    topic: finops.normalization.taxonomy-gap.v1
+    producer: A02
+    consumers: [A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_DETAIL
+    description: >
+      Published when A02 encounters unmapped service names during taxonomy
+      mapping. Requires administrator resolution.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, provider,
+                 unmapped_services]
+      properties:
+        event_id:            { type: string, format: uuid }
+        event_type:          { type: string, const: "normalization.taxonomy.gap" }
+        event_timestamp:     { type: string, format: date-time }
+        tenant_id:           { type: string, format: uuid }
+        provider:            { type: string }
+        unmapped_services:   { type: array, items: { type: string } }
+        affected_cost_sar:   { type: number }
+
+  - event_name: normalization.rate_card.gap
+    event_id: EVT-A02-003
+    version: 1
+    topic: finops.normalization.rate-card-gap.v1
+    producer: A02
+    consumers: [A27]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_DETAIL
+    description: >
+      Published when on-premises records cannot be costed due to missing
+      or expired rate card entries. Results in zero-cost records.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 resource_type, records_affected]
+      properties:
+        event_id:          { type: string, format: uuid }
+        event_type:        { type: string, const: "normalization.rate_card.gap" }
+        event_timestamp:   { type: string, format: date-time }
+        tenant_id:         { type: string, format: uuid }
+        resource_type:     { type: string }
+        records_affected:  { type: integer }
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN: allocation  (Producer: A03 — Allocation Agent)
+  # ---------------------------------------------------------------------------
+
+  - event_name: allocation.run.completed
+    event_id: EVT-A03-001
+    version: 1
+    topic: finops.allocation.run-completed.v1
+    producer: A03
+    consumers: [A04, A27]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published when allocation pipeline completes. Triggers A04 report
+      refresh and chargeback data availability.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, run_id,
+                 billing_period, status, records_allocated, coverage_rate_pct]
+      properties:
+        event_id:                { type: string, format: uuid }
+        event_type:              { type: string, const: "allocation.run.completed" }
+        event_timestamp:         { type: string, format: date-time }
+        tenant_id:               { type: string, format: uuid }
+        run_id:                  { type: string, format: uuid }
+        billing_period:          { type: string, format: date }
+        status:                  { type: string, enum: [Completed, Partial] }
+        records_allocated:       { type: integer }
+        records_unattributed:    { type: integer }
+        total_cost_allocated_sar: { type: number }
+        coverage_rate_pct:       { type: number }
+        reconciliation_variance: { type: number }
+
+  - event_name: allocation.coverage.alert
+    event_id: EVT-A03-002
+    version: 1
+    topic: finops.allocation.coverage-alert.v1
+    producer: A03
+    consumers: [A04, A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_DETAIL
+    description: >
+      Published when allocation coverage falls below configured threshold
+      (default: 80%). Indicates significant unattributed spend.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 coverage_rate_pct, unattributed_cost_sar]
+      properties:
+        event_id:              { type: string, format: uuid }
+        event_type:            { type: string, const: "allocation.coverage.alert" }
+        event_timestamp:       { type: string, format: date-time }
+        tenant_id:             { type: string, format: uuid }
+        coverage_rate_pct:     { type: number }
+        unattributed_cost_sar: { type: number }
+        billing_period:        { type: string, format: date }
+
+  - event_name: allocation.chargeback.generated
+    event_id: EVT-A03-003
+    version: 1
+    topic: finops.allocation.chargeback-generated.v1
+    producer: A03
+    consumers: [A04, A27]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published when chargeback dataset is finalized for a billing period.
+      A04 generates chargeback reports from this event.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 billing_period, total_chargeback_sar, owner_count]
+      properties:
+        event_id:             { type: string, format: uuid }
+        event_type:           { type: string, const: "allocation.chargeback.generated" }
+        event_timestamp:      { type: string, format: date-time }
+        tenant_id:            { type: string, format: uuid }
+        billing_period:       { type: string, format: date }
+        total_chargeback_sar: { type: number }
+        owner_count:          { type: integer }
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN: reporting  (Producer: A04 — Reporting & Analytics Agent)
+  # ---------------------------------------------------------------------------
+
+  - event_name: reporting.generation.completed
+    event_id: EVT-A04-001
+    version: 1
+    topic: finops.reporting.generation-completed.v1
+    producer: A04
+    consumers: [A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE
+    description: >
+      Published when a scheduled or on-demand report generation completes.
+      Orchestrator tracks report SLA compliance.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 generation_id, report_id, status]
+      properties:
+        event_id:         { type: string, format: uuid }
+        event_type:       { type: string, const: "reporting.generation.completed" }
+        event_timestamp:  { type: string, format: date-time }
+        tenant_id:        { type: string, format: uuid }
+        generation_id:    { type: string, format: uuid }
+        report_id:        { type: string, format: uuid }
+        report_type:      { type: string }
+        status:           { type: string, enum: [Completed, Partial, Failed] }
+        duration_seconds: { type: integer }
+        recipients_count: { type: integer }
+
+  - event_name: reporting.insight.generated
+    event_id: EVT-A04-002
+    version: 1
+    topic: finops.reporting.insight-generated.v1
+    producer: A04
+    consumers: [A27]
+    criticality: LOW
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE
+    description: >
+      Published when A04 generates a proactive insight for stakeholders.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 insight_id, insight_type, severity]
+      properties:
+        event_id:        { type: string, format: uuid }
+        event_type:      { type: string, const: "reporting.insight.generated" }
+        event_timestamp: { type: string, format: date-time }
+        tenant_id:       { type: string, format: uuid }
+        insight_id:      { type: string, format: uuid }
+        insight_type:    { type: string }
+        severity:        { type: string, enum: [Informational, Warning, Critical] }
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN: anomaly  (Producer: A05 — Anomaly Detection Agent)
+  # ---------------------------------------------------------------------------
+
+  - event_name: anomaly.detection.completed
+    event_id: EVT-A05-001
+    version: 1
+    topic: finops.anomaly.detection-completed.v1
+    producer: A05
+    consumers: [A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published when a detection cycle completes. Reports scan summary
+      to orchestrator for health tracking.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id, run_id,
+                 status, anomalies_detected, anomalies_suppressed]
+      properties:
+        event_id:             { type: string, format: uuid }
+        event_type:           { type: string, const: "anomaly.detection.completed" }
+        event_timestamp:      { type: string, format: date-time }
+        tenant_id:            { type: string, format: uuid }
+        run_id:               { type: string, format: uuid }
+        status:               { type: string, enum: [Completed, Partial, Timeout] }
+        records_analyzed:     { type: integer }
+        anomalies_detected:   { type: integer }
+        anomalies_suppressed: { type: integer }
+        duration_seconds:     { type: integer }
+
+  - event_name: anomaly.detected
+    event_id: EVT-A05-002
+    version: 1
+    topic: finops.anomaly.detected.v1
+    producer: A05
+    consumers: [A04, A27]
+    criticality: HIGH
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published for each new anomaly detected. A04 updates dashboards.
+      A27 coordinates alerting. Full state for audit immutability.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 anomaly_id, severity, severity_score, root_cause_category,
+                 baseline_value_sar, actual_value_sar, deviation_pct]
+      properties:
+        event_id:            { type: string, format: uuid }
+        event_type:          { type: string, const: "anomaly.detected" }
+        event_timestamp:     { type: string, format: date-time }
+        tenant_id:           { type: string, format: uuid }
+        anomaly_id:          { type: string, format: uuid }
+        severity:            { type: string, enum: [Informational, Warning, Critical] }
+        severity_score:      { type: number, minimum: 0, maximum: 100 }
+        root_cause_category: { type: string }
+        provider:            { type: string }
+        service_name:        { type: string }
+        baseline_value_sar:  { type: number }
+        actual_value_sar:    { type: number }
+        deviation_pct:       { type: number }
+        deviation_direction: { type: string, enum: [Spike, Drop] }
+        financial_impact_30d_sar: { type: number }
+        blast_radius:        { type: integer }
+
+  - event_name: anomaly.resolved
+    event_id: EVT-A05-003
+    version: 1
+    topic: finops.anomaly.resolved.v1
+    producer: A05
+    consumers: [A04, A27]
+    criticality: MEDIUM
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: FULL_STATE
+    description: >
+      Published when an anomaly lifecycle transitions to a resolved state.
+      Carries resolution details for audit and reporting updates.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 anomaly_id, resolution_type]
+      properties:
+        event_id:                     { type: string, format: uuid }
+        event_type:                   { type: string, const: "anomaly.resolved" }
+        event_timestamp:              { type: string, format: date-time }
+        tenant_id:                    { type: string, format: uuid }
+        anomaly_id:                   { type: string, format: uuid }
+        resolution_type:              { type: string, enum: [Confirmed, False_Positive,
+                                        Expected_Change] }
+        financial_impact_confirmed_sar: { type: number }
+        resolved_by:                  { type: string, format: uuid }
+
+  - event_name: anomaly.storm.activated
+    event_id: EVT-A05-004
+    version: 1
+    topic: finops.anomaly.storm-activated.v1
+    producer: A05
+    consumers: [A27]
+    criticality: CRITICAL
+    ordering: PER_TENANT
+    delivery: AT_LEAST_ONCE
+    payload_strategy: REFERENCE_PLUS_DETAIL
+    description: >
+      Published when anomaly storm mode activates (>50 anomalies in a single
+      detection cycle). Prevents alert fatigue by batching notifications.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, tenant_id,
+                 anomaly_count, batch_window_minutes]
+      properties:
+        event_id:              { type: string, format: uuid }
+        event_type:            { type: string, const: "anomaly.storm.activated" }
+        event_timestamp:       { type: string, format: date-time }
+        tenant_id:             { type: string, format: uuid }
+        anomaly_count:         { type: integer }
+        batch_window_minutes:  { type: integer }
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN: platform  (Producer: A27 — Orchestrator Agent skeleton)
+  # ---------------------------------------------------------------------------
+
+  - event_name: platform.agent.health
+    event_id: EVT-A27-001
+    version: 1
+    topic: finops.platform.agent-health.v1
+    producer: A27
+    consumers: [A04]
+    criticality: LOW
+    ordering: NONE
+    delivery: AT_MOST_ONCE
+    payload_strategy: REFERENCE
+    description: >
+      Periodic heartbeat/health summary published by orchestrator.
+      A04 uses for platform health dashboards.
+    schema:
+      type: object
+      required: [event_id, event_type, event_timestamp, agent_id, status]
+      properties:
+        event_id:        { type: string, format: uuid }
+        event_type:      { type: string, const: "platform.agent.health" }
+        event_timestamp: { type: string, format: date-time }
+        agent_id:        { type: string }
+        status:          { type: string, enum: [Healthy, Degraded, Failed, Stopped] }
+        last_run:        { type: string, format: date-time }
+        error_count_24h: { type: integer }
+
+# =============================================================================
+# SEED SUMMARY
+# =============================================================================
+# Total event types:       20
+# Domains:                 5 (ingestion, normalization, allocation, reporting, anomaly, platform)
+# HIGH criticality:        8
+# MEDIUM criticality:      8
+# LOW criticality:         2
+# CRITICAL:                1
+# Full-state payloads:     8 (financial/audit-grade)
+# Reference-only payloads: 12
+#
+# MIGRATION NOTE:
+# At Angel round, Redis Pub/Sub channels map 1:1 to Kafka topics.
+# The topic naming convention is already Kafka-compatible.
+# Consumer groups will be configured at that time per the naming convention:
+#   finops.{agent-type}.{topic}.consumer
+# DLQ topics will be added:  finops.{domain}.{event-type}.v{version}.dlq
+# =============================================================================

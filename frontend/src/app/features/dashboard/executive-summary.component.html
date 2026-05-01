@@ -1,0 +1,116 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Executive Summary Dashboard: KPIs → NarrativeBlock → spend trend + donut → top movers -->
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Executive Summary" [subtitle]="subtitle()">
+      <div slot="actions" class="header-actions">
+        <app-time-range-selector (rangeChange)="onRangeChange($event)"></app-time-range-selector>
+      </div>
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading executive summary..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load executive summary" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <!-- 6-KPI row -->
+      <section class="kpi-row" aria-label="Executive key metrics">
+        <app-kpi-card label="Total spend"           [value]="kpis()!.totalSpend.value          | number:'1.0-0'" [unit]="kpis()!.totalSpend.currency"          [deltaPercent]="kpis()!.totalSpend.deltaPercent"          [deltaDirection]="kpis()!.totalSpend.deltaDirection"          [sparklineData]="kpis()!.totalSpend.sparkline"          status="neutral"></app-kpi-card>
+        <app-kpi-card label="MoM change"            [value]="kpis()!.momChangePct.value         | number:'1.1-1'" unit="%"                                       [deltaPercent]="kpis()!.momChangePct.deltaPercent"         [deltaDirection]="kpis()!.momChangePct.deltaDirection"         [sparklineData]="kpis()!.momChangePct.sparkline"         status="neutral"></app-kpi-card>
+        <app-kpi-card label="Budget utilization"    [value]="kpis()!.budgetUtilization.value    | number:'1.0-0'" unit="%"                                       [deltaPercent]="kpis()!.budgetUtilization.deltaPercent"    [deltaDirection]="kpis()!.budgetUtilization.deltaDirection"    [sparklineData]="kpis()!.budgetUtilization.sparkline"    [status]="kpis()!.budgetUtilization.value > 85 ? 'warning' : 'neutral'"></app-kpi-card>
+        <app-kpi-card label="Forecast accuracy"     [value]="kpis()!.forecastAccuracy.value     | number:'1.1-1'" unit="%"                                       [deltaPercent]="kpis()!.forecastAccuracy.deltaPercent"     [deltaDirection]="kpis()!.forecastAccuracy.deltaDirection"     [sparklineData]="kpis()!.forecastAccuracy.sparkline"     status="success"></app-kpi-card>
+        <app-kpi-card label="Optimization savings"  [value]="kpis()!.optimizationSavings.value  | number:'1.0-0'" [unit]="kpis()!.optimizationSavings.currency"  [deltaPercent]="kpis()!.optimizationSavings.deltaPercent"  [deltaDirection]="kpis()!.optimizationSavings.deltaDirection"  [sparklineData]="kpis()!.optimizationSavings.sparkline"  status="success"></app-kpi-card>
+        <app-kpi-card label="FinOps maturity"       [value]="kpis()!.finOpsMaturityScore.value  | number:'1.0-0'" unit="/ 100"                                   [deltaPercent]="kpis()!.finOpsMaturityScore.deltaPercent"  [deltaDirection]="kpis()!.finOpsMaturityScore.deltaDirection"  [sparklineData]="kpis()!.finOpsMaturityScore.sparkline"  [status]="kpis()!.finOpsMaturityScore.value >= 70 ? 'success' : kpis()!.finOpsMaturityScore.value >= 40 ? 'neutral' : 'warning'"></app-kpi-card>
+      </section>
+
+      <!-- Agent narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block [summary]="n.summary" [agentName]="n.agentName" [generatedAt]="n.generatedAt" [highlights]="n.highlights"></app-narrative-block>
+      }
+
+      <!-- Full-width spend trend -->
+      <ion-card class="chart-card-full">
+        <ion-card-header><ion-card-title>12-month spend vs budget &amp; forecast</ion-card-title></ion-card-header>
+        <ion-card-content>
+          <apx-chart
+            [series]="trendSeries()"
+            [chart]="trendChart"
+            [xaxis]="trendXAxis()"
+            [yaxis]="trendYAxis"
+            [stroke]="trendStroke"
+            [fill]="trendFill"
+            [colors]="trendColors"
+            [tooltip]="trendTooltip"
+            [dataLabels]="{ enabled: false }"
+            [legend]="{ position: 'top', fontFamily: 'var(--finops-font-family)', fontSize: '12px' }"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2-col: provider donut + top movers -->
+      <div class="chart-grid-2col">
+
+        <!-- Provider donut -->
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Spend by provider</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="donutSeries()"
+              [chart]="donutChart"
+              [labels]="donutLabels()"
+              [colors]="donutColors"
+              [tooltip]="donutTooltip"
+              [plotOptions]="donutPlotOptions"
+              [legend]="{ position: 'bottom', fontFamily: 'var(--finops-font-family)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Top cost movers -->
+        <ion-card class="chart-card movers-card">
+          <ion-card-header><ion-card-title>Top cost movers</ion-card-title></ion-card-header>
+          <ion-card-content class="movers-body">
+
+            <div class="movers-section">
+              <h4 class="movers-heading movers-heading-inc">Increases</h4>
+              @for (m of increases(); track m.name) {
+                <div class="mover-row" [routerLink]="['/cost/explorer']">
+                  <div class="mover-info">
+                    <span class="mover-name">{{ m.name }}</span>
+                    <span class="mover-meta">{{ m.provider }} · {{ m.domain }}</span>
+                  </div>
+                  <div class="mover-delta delta-increase">
+                    <span class="mover-pct">{{ moverPct(m) }}</span>
+                    <span class="mover-amt">+{{ moverAmt(m) }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="movers-divider" aria-hidden="true"></div>
+
+            <div class="movers-section">
+              <h4 class="movers-heading movers-heading-dec">Decreases</h4>
+              @for (m of decreases(); track m.name) {
+                <div class="mover-row" [routerLink]="['/cost/explorer']">
+                  <div class="mover-info">
+                    <span class="mover-name">{{ m.name }}</span>
+                    <span class="mover-meta">{{ m.provider }} · {{ m.domain }}</span>
+                  </div>
+                  <div class="mover-delta delta-decrease">
+                    <span class="mover-pct">{{ moverPct(m) }}</span>
+                    <span class="mover-amt">{{ moverAmt(m) }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+
+          </ion-card-content>
+        </ion-card>
+
+      </div><!-- /chart-grid-2col -->
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

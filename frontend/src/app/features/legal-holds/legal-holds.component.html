@@ -1,0 +1,32 @@
+<!-- Legal Holds HTML --><!-- FinOps v1.1 -->
+<ion-content><div class="page-container">
+  <app-page-header title="Legal Holds" subtitle="Active litigation and regulatory holds that prevent data deletion or archival">
+    <div slot="actions" class="header-actions"><ion-button fill="solid" color="primary" aria-label="Create new legal hold"><ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>New hold</ion-button></div>
+  </app-page-header>
+  @if (summary(); as s) {
+    <section class="summary-row" aria-label="Legal hold summary">
+      <div class="summary-stat"><div class="summary-label">Total</div><div class="summary-value">{{ s.total }}</div></div>
+      <div class="summary-stat"><div class="summary-label">Active</div><div class="summary-value" [class.summary-value-danger]="s.active > 0">{{ s.active }}</div></div>
+      <div class="summary-stat"><div class="summary-label">Released</div><div class="summary-value summary-value-success">{{ s.released }}</div></div>
+      <div class="summary-stat"><div class="summary-label">Policies blocked</div><div class="summary-value" [class.summary-value-warning]="s.blocking > 0">{{ s.blocking }}</div></div>
+    </section>
+  }
+  @if (isLoading()) { <app-loading-state variant="spinner" message="Loading legal holds..."></app-loading-state> }
+  @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load legal holds" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+  @else if (hasData()) {
+    <div class="filter-toolbar" role="toolbar">
+      <div class="searchbar-wrap"><ion-searchbar placeholder="Search by hold name or case reference..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search legal holds"></ion-searchbar></div>
+      <div class="filter-chips" role="group">
+        <ion-button id="filter-lh-status" fill="outline" color="medium"><ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }</ion-button>
+        <ion-popover trigger="filter-lh-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+        @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear filters">Clear all</ion-button> }
+      </div>
+    </div>
+    @if (hasActiveFilters()) { <div class="active-chips" role="group">@for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }</div> }
+    <ion-card class="grid-card"><ion-card-header><ion-card-title class="grid-title">{{ total() | number }} hold{{ total() !== 1 ? 's' : '' }}</ion-card-title></ion-card-header>
+    <ion-card-content class="grid-content">
+      @if (hasRows()) { <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="rows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="20" [animateRows]="true" (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)" aria-label="Legal holds table"></ag-grid-angular> }
+      @else { <app-empty-state icon="shield-outline" title="No holds match your filters" [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state> }
+    </ion-card-content></ion-card>
+  }
+</div></ion-content>

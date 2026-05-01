@@ -1,0 +1,104 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// Metering Engine Dashboard — component styles. Tokens only, no hex literals.
+
+:host {
+  display: block;
+  background-color: var(--finops-bg-page);
+}
+
+.page-container {
+  max-width: var(--finops-content-max-width);
+  margin: 0 auto;
+  padding: var(--finops-space-6);
+  @media (min-width: 768px) { padding: var(--finops-space-8); }
+}
+
+// ── KPI Row ───────────────────────────────────────────────────────────────
+.kpi-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--finops-space-4);
+  margin-bottom: var(--finops-space-6);
+  @media (min-width: 576px) { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 992px) { grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-6); }
+}
+
+// ── Narrative ─────────────────────────────────────────────────────────────
+app-narrative-block {
+  display: block;
+  margin-bottom: var(--finops-space-6);
+}
+
+// ── Chart Grid ────────────────────────────────────────────────────────────
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--finops-space-6);
+  margin-bottom: var(--finops-space-8);
+  @media (min-width: 992px) { grid-template-columns: repeat(2, 1fr); }
+}
+
+.chart-card {
+  margin: 0;
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title {
+    font-family: var(--finops-font-family);
+    font-size: var(--finops-text-lg);
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-primary);
+    margin: 0 0 var(--finops-space-4);
+  }
+  ion-card-content { padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+
+// ── Pipeline grid card ────────────────────────────────────────────────────
+.grid-card {
+  margin: 0;
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+
+  ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; }
+  ion-card-title {
+    font-family: var(--finops-font-family);
+    font-size: var(--finops-text-base);
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-secondary);
+  }
+}
+.grid-content  { padding: var(--finops-space-4) 0 0 0; }
+.finops-grid   { width: 100%; height: 260px; }
+
+// ── AG Grid cell renderers ────────────────────────────────────────────────
+:host ::ng-deep {
+  .pipe-name {
+    font-size: var(--finops-text-sm);
+    font-weight: var(--finops-font-medium);
+    color: var(--finops-text-primary);
+  }
+
+  .status-badge {
+    display: inline-flex; align-items: center;
+    padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full);
+    font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.success { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.warning { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.danger  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+    &.neutral { background-color: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+  }
+
+  .lag-ok     { color: var(--finops-success);     font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .lag-medium { color: var(--finops-warning-dark); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .lag-high   { color: var(--finops-danger);       font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); }
+
+  .error-ok     { color: var(--finops-success);     font-size: var(--finops-text-sm); }
+  .error-medium { color: var(--finops-warning-dark); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .error-high   { color: var(--finops-danger);       font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); }
+}

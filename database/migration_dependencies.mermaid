@@ -1,0 +1,109 @@
+%% FinOps Platform DDL Migration Dependency Graph
+%% Arrows indicate "depends on" — source requires target to be applied first
+
+graph TD
+    classDef foundation fill:#d4e6f1,stroke:#1a5490,stroke-width:2px,color:#1a1a1a
+    classDef seed fill:#e8f5e8,stroke:#2d6a2d,stroke-width:1px,color:#1a1a1a
+    classDef metering fill:#fef5e7,stroke:#b7791f,stroke-width:1px,color:#1a1a1a
+    classDef billing fill:#fdebd0,stroke:#ca6f1e,stroke-width:1px,color:#1a1a1a
+    classDef wave2 fill:#f4ecf7,stroke:#6c3483,stroke-width:1px,color:#1a1a1a
+    classDef wave3 fill:#fdedec,stroke:#922b21,stroke-width:1px,color:#1a1a1a
+    classDef wave4 fill:#e8daef,stroke:#4a235a,stroke-width:1px,color:#1a1a1a
+    classDef wave5 fill:#d6eaf8,stroke:#21618c,stroke-width:1px,color:#1a1a1a
+    classDef critical fill:#f5b7b1,stroke:#922b21,stroke-width:3px,color:#1a1a1a
+
+    V006["V006: Metering Foundation<br/>(ref_currency + MTR-01)<br/>11 tables"]:::metering
+    V010["V010: MT-01/A31 Foundation<br/>(tenant + auth_user + agent_identity)<br/>19 tables"]:::critical
+    V011["V011: FK Constraint Backfill<br/>75 FKs added"]:::critical
+
+    V001["V001: A01 Ingestion<br/>5 tables"]:::seed
+    V002["V002: A02 Normalization<br/>4 tables"]:::seed
+    V003["V003: A03 Allocation<br/>4 tables"]:::seed
+    V004["V004: A04 Reporting<br/>4 tables"]:::seed
+    V005["V005: A05 Anomaly Detection<br/>4 tables"]:::seed
+    V027["V027: A27 Orchestrator<br/>(in Seed batch)"]:::seed
+
+    V007["V007: ME-01 Self-Managing Metering<br/>12 tables"]:::metering
+    V008["V008: BE-01 Billing Part A<br/>12 tables"]:::billing
+    V009["V009: BE-01 Billing Part B<br/>16 tables"]:::billing
+
+    V012["V012: Wave 2a<br/>A06 Forecasting + A07 Budget<br/>13 tables"]:::wave2
+    V013["V013: Wave 2b<br/>A08 Benchmarking + A09 Unit Econ<br/>11 tables"]:::wave2
+    V014["V014: Wave 2c<br/>A20 Governance + A23 Onboard + A24 Tag<br/>17 tables"]:::wave2
+
+    V015["V015: Wave 3a<br/>A11/A12/A13 + opt_* enums<br/>13 tables"]:::wave3
+    V016["V016: Wave 3b<br/>A14/A15/A16<br/>14 tables"]:::wave3
+    V017["V017: Wave 3c<br/>A17/A18/A19<br/>13 tables"]:::wave3
+
+    V018["V018: Wave 4a<br/>A22 Chargeback + A25 Education<br/>13 tables"]:::wave4
+    V019["V019: Wave 4b<br/>A28/A29/A30 Coordination<br/>12 tables"]:::wave4
+    V020["V020: Wave 4c<br/>A26 + A32<br/>12 tables"]:::wave4
+
+    V021["V021: Wave 5a<br/>AP-01 Notification + Integration Hub<br/>11 tables"]:::wave5
+    V022["V022: Wave 5b<br/>AP-01 Flags + Support + Settings<br/>13 tables"]:::wave5
+    V023["V023: Wave 5c<br/>AP-01 Lifecycle + Audit + DSR<br/>9 tables"]:::wave5
+
+    V024["V024: A21 Assessment Agent<br/>12 tables"]:::wave5
+
+    %% Foundation dependency chain
+    V006 -.->|"ref_currency FK target"| V007
+    V006 -.->|"ref_currency + MTR refs"| V008
+    V006 -.->|"ref_currency"| V010
+    V008 --> V009
+
+    %% Seed chain
+    V001 --> V002
+    V002 --> V003
+    V003 --> V004
+    V003 --> V005
+
+    %% V010 is the pivot — everything after depends on it
+    V010 --> V011
+    V006 --> V011
+    V007 --> V011
+    V008 --> V011
+    V009 --> V011
+    V001 --> V011
+    V002 --> V011
+    V003 --> V011
+    V004 --> V011
+    V005 --> V011
+
+    %% Wave 2 depends on V010 foundation
+    V010 --> V012
+    V010 --> V013
+    V010 --> V014
+
+    %% Wave 3 depends on V010 + V014 (gov_severity) + V015 establishes opt_* enums
+    V010 --> V015
+    V014 -.->|"gov_severity enum"| V015
+    V015 -.->|"opt_* enums"| V016
+    V015 -.->|"opt_* enums"| V017
+    V014 -.->|"gov_severity enum"| V016
+    V014 -.->|"gov_severity enum"| V017
+
+    %% Wave 4 depends on foundation + opt_* enums + gov_severity
+    V010 --> V018
+    V015 -.->|"opt_priority_tier"| V018
+    V010 --> V019
+    V014 -.->|"gov_severity"| V019
+    V015 -.->|"opt_* enums"| V019
+    V010 --> V020
+    V012 -.->|"forecast_drift_severity"| V020
+    V014 -.->|"gov_severity"| V020
+    V019 -.->|"logical: conflict integration"| V020
+
+    %% Wave 5 depends on V010 + reused enums
+    V010 --> V021
+    V014 -.->|"gov_severity"| V021
+    V010 --> V022
+    V014 -.->|"gov_severity"| V022
+    V015 -.->|"opt_priority_tier"| V022
+    V010 --> V023
+    V014 -.->|"gov_severity"| V023
+    V015 -.->|"opt_priority_tier"| V023
+
+    %% A21 Assessment
+    V010 --> V024
+    V013 -.->|"bm_peer_cohort FK"| V024
+    V015 -.->|"opt_* enums"| V024

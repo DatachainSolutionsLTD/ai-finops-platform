@@ -1,0 +1,136 @@
+// FinOps Platform Design System v1.1 — 404 Not Found — tokens only.
+// Special pattern: full-page centered, no side nav, own visual language.
+
+:host { display: block; height: 100%; }
+
+// Stretch the IonContent to fill the viewport
+.not-found-content {
+  --background: var(--finops-bg-page);
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+// Outer shell: vertically and horizontally centred
+.not-found-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--finops-space-8) var(--finops-space-6);
+  gap: var(--finops-space-8);
+  text-align: center;
+}
+
+// ── Giant 404 glyph ───────────────────────────────────────────────────────
+.not-found-glyph {
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-2);
+  user-select: none;
+  pointer-events: none;
+}
+
+.glyph-four {
+  font-family: var(--finops-font-family);
+  font-size: clamp(80px, 15vw, 140px);
+  font-weight: var(--finops-font-bold);
+  color: var(--finops-border-default);
+  line-height: 1;
+}
+
+.glyph-icon {
+  font-size: clamp(56px, 10vw, 96px);
+  color: var(--finops-brand-primary);
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────
+.not-found-card {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--finops-space-5);
+  padding: var(--finops-space-8) var(--finops-space-6);
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-xl);
+  box-shadow: var(--finops-shadow-lg);
+}
+
+.not-found-title {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-2xl);
+  font-weight: var(--finops-font-bold);
+  color: var(--finops-text-primary);
+  margin: 0;
+}
+
+.not-found-message {
+  font-size: var(--finops-text-base);
+  color: var(--finops-text-secondary);
+  line-height: var(--finops-leading-relaxed);
+  margin: 0;
+  max-width: 360px;
+}
+
+.not-found-path {
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-2);
+  padding: var(--finops-space-2) var(--finops-space-3);
+  background-color: var(--finops-bg-subtle);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-md);
+  font-size: var(--finops-text-sm);
+  color: var(--finops-text-tertiary);
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+
+  ion-icon { flex-shrink: 0; }
+
+  code {
+    font-family: var(--finops-font-mono);
+    font-size: var(--finops-text-xs);
+    color: var(--finops-danger);
+    word-break: break-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 320px;
+    display: block;
+  }
+}
+
+// ── Action buttons ────────────────────────────────────────────────────────
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--finops-space-3);
+
+  ion-button {
+    --border-radius: var(--finops-radius-md);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
+// ── Platform branding footer ──────────────────────────────────────────────
+.not-found-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-2);
+  font-size: var(--finops-text-sm);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-text-disabled);
+  margin: 0;
+  user-select: none;
+
+  ion-icon { font-size: var(--finops-text-base); }
+}

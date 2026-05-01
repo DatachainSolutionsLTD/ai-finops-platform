@@ -1,0 +1,252 @@
+# =============================================================================
+# Authentication Integration — Seed Round
+# Provider: AWS Cognito (primary) — migrates to Keycloak at Angel for SSO
+# Flow:    OAuth 2.0 Authorization Code + PKCE (web app)
+#          Client Credentials (agent-to-API, machine-to-machine)
+# JWT:     Custom claims for tenant_id, roles[], autonomy_level
+# =============================================================================
+
+---
+# ---------------------------------------------------------------------------
+# 1. COGNITO USER POOL CONFIGURATION
+# ---------------------------------------------------------------------------
+cognito:
+  user_pool:
+    name: finops-seed-user-pool
+    region: me-south-1
+
+    # Password policy
+    password_policy:
+      minimum_length: 12
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_symbols: true
+      temporary_password_validity_days: 7
+
+    # MFA configuration
+    mfa:
+      enforcement: REQUIRED    # MFA mandatory from day one
+      methods: [TOTP]          # Software token MFA
+      sms_fallback: false      # No SMS (data sovereignty)
+
+    # Account recovery
+    recovery:
+      mechanisms: [VERIFIED_EMAIL]
+
+    # Schema attributes (custom claims)
+    custom_attributes:
+      - name: tenant_id
+        attribute_data_type: String
+        mutable: false
+        required: true
+        constraints: { min_length: 36, max_length: 36 }
+
+      - name: roles
+        attribute_data_type: String
+        mutable: true
+        required: true
+        description: "JSON array of role names"
+
+      - name: display_name
+        attribute_data_type: String
+        mutable: true
+        required: true
+
+      - name: persona
+        attribute_data_type: String
+        mutable: true
+        description: "Executive, Finance, Engineering, FinOps_Analyst"
+
+    # Advanced security
+    advanced_security:
+      mode: ENFORCED
+      compromised_credentials: BLOCK
+      adaptive_authentication: true
+
+    # Token configuration
+    token_config:
+      access_token_validity: 60        # 60 minutes
+      id_token_validity: 60            # 60 minutes
+      refresh_token_validity: 43200    # 30 days
+      auth_flows:
+        - ALLOW_USER_SRP_AUTH          # Secure Remote Password
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_CUSTOM_AUTH
+
+  # ---------------------------------------------------------------------------
+  # 2. APP CLIENTS
+  # ---------------------------------------------------------------------------
+  app_clients:
+    # Web application client (PKCE flow)
+    - name: finops-web-app
+      generate_secret: false           # PKCE — no client secret
+      auth_flows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      oauth:
+        allowed_flows: [code]          # Authorization Code only
+        allowed_scopes: [openid, email, profile, "finops/read", "finops/write"]
+        callback_urls:
+          - https://app.finops.local/auth/callback
+          - http://localhost:3000/auth/callback   # Dev
+        logout_urls:
+          - https://app.finops.local/auth/logout
+          - http://localhost:3000/auth/logout
+      token_validity:
+        access_token: 60               # minutes
+        id_token: 60
+        refresh_token: 43200           # minutes (30 days)
+      pkce_required: true
+
+    # Machine-to-machine client (agent API access)
+    - name: finops-agent-api
+      generate_secret: true
+      auth_flows:
+        - ALLOW_CUSTOM_AUTH
+      oauth:
+        allowed_flows: [client_credentials]
+        allowed_scopes: ["finops/agent"]
+      token_validity:
+        access_token: 15               # 15 minutes (short-lived)
+      description: "Machine-to-machine for external API integrations"
+
+  # ---------------------------------------------------------------------------
+  # 3. RESOURCE SERVER (API scopes)
+  # ---------------------------------------------------------------------------
+  resource_server:
+    identifier: https://api.finops.local
+    name: FinOps Platform API
+    scopes:
+      - name: "finops/read"
+        description: "Read access to cost data, reports, dashboards"
+      - name: "finops/write"
+        description: "Write access to rules, configs, lifecycle transitions"
+      - name: "finops/admin"
+        description: "Administrative access (connectors, rate cards, users)"
+      - name: "finops/agent"
+        description: "Agent-to-API machine scope"
+
+  # ---------------------------------------------------------------------------
+  # 4. USER GROUPS (maps to RBAC roles)
+  # ---------------------------------------------------------------------------
+  groups:
+    - name: platform-admins
+      description: "Full platform access across all tenants"
+      role: Platform_Admin
+
+    - name: tenant-admins-g42
+      description: "G42 tenant administrators"
+      role: Tenant_Admin
+
+    - name: finops-analysts-g42
+      description: "G42 FinOps analysts"
+      role: FinOps_Analyst
+
+    - name: executive-viewers-g42
+      description: "G42 executive dashboard viewers"
+      role: Executive_Viewer
+
+---
+# ---------------------------------------------------------------------------
+# 5. JWT CLAIM STRUCTURE
+# ---------------------------------------------------------------------------
+# Custom JWT claims injected via Cognito Pre-Token Generation Lambda
+
+jwt_claims:
+  description: |
+    The JWT access token contains the following claims, used by OPA policies
+    and API gateway for authorization.
+
+  standard_claims:
+    sub: "cognito-user-uuid"
+    iss: "https://cognito-idp.me-south-1.amazonaws.com/{user_pool_id}"
+    aud: "finops-web-app-client-id"
+    exp: 1719878400
+    iat: 1719874800
+    token_use: "access"
+    scope: "openid email profile finops/read finops/write"
+
+  custom_claims:
+    "custom:tenant_id": "g42-seed-tenant-uuid"
+    "custom:roles": '["FinOps_Analyst"]'
+    "custom:display_name": "Ahmed Al-Farsi"
+    "custom:persona": "FinOps_Analyst"
+    "cognito:groups": '["finops-analysts-g42"]'
+
+---
+# ---------------------------------------------------------------------------
+# 6. PRE-TOKEN GENERATION LAMBDA (claim injection)
+# ---------------------------------------------------------------------------
+# This Lambda runs before token issuance to inject tenant_id and roles
+# from the user's Cognito group membership into the JWT.
+
+lambda_config:
+  function_name: finops-seed-pre-token-gen
+  runtime: python3.12
+  handler: handler.lambda_handler
+  timeout: 5
+  memory: 128
+  description: "Injects custom claims (tenant_id, roles) into Cognito JWT"
+
+  environment:
+    TENANT_MAPPING_TABLE: finops-user-tenant-mapping
+    # DynamoDB table mapping: user_sub → {tenant_id, roles[], persona}
+
+  logic: |
+    # Pseudocode for Pre-Token Generation Lambda:
+    # 1. Receive event with user attributes and group membership
+    # 2. Look up tenant_id from user groups (group name contains tenant ref)
+    # 3. Map Cognito group → RBAC role (platform-admins → Platform_Admin)
+    # 4. Return claimsToAddOrOverride with custom:tenant_id, custom:roles
+    # 5. Return claimsToSuppress for any claims that should not be in token
+
+---
+# ---------------------------------------------------------------------------
+# 7. API GATEWAY AUTH CONFIGURATION
+# ---------------------------------------------------------------------------
+# API Gateway (ALB + Cognito authorizer) validates JWT and extracts tenant
+
+api_gateway_auth:
+  type: COGNITO_USER_POOLS
+  authorizer:
+    name: finops-cognito-authorizer
+    user_pool_arn: "arn:aws:cognito-idp:me-south-1:{account}:userpool/{pool_id}"
+    identity_sources: ["$request.header.Authorization"]
+    jwt_configuration:
+      audience: ["finops-web-app-client-id"]
+      issuer: "https://cognito-idp.me-south-1.amazonaws.com/{user_pool_id}"
+
+  # Tenant context injection (performed by API gateway middleware)
+  middleware:
+    extract_tenant_id: "token.custom:tenant_id"
+    inject_header: "X-Tenant-ID"
+    validate_tenant_exists: true
+    set_app_setting: "SET app.current_tenant_id = '{tenant_id}'"
+    # This SET command activates PostgreSQL RLS for the connection
+
+---
+# ---------------------------------------------------------------------------
+# 8. SEED USERS (initial provisioning)
+# ---------------------------------------------------------------------------
+seed_users:
+  - email: admin@finops-platform.local
+    display_name: Platform Administrator
+    group: platform-admins
+    tenant: g42-seed
+    persona: null
+    mfa_required: true
+
+  - email: finops@g42.ai
+    display_name: G42 FinOps Lead
+    group: finops-analysts-g42
+    tenant: g42-seed
+    persona: FinOps_Analyst
+    mfa_required: true
+
+  - email: cfo@g42.ai
+    display_name: G42 CFO
+    group: executive-viewers-g42
+    tenant: g42-seed
+    persona: Executive
+    mfa_required: true

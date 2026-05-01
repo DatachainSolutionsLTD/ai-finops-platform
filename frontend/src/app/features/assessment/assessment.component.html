@@ -1,0 +1,45 @@
+<!-- FinOps Platform Design System v1.1 — Assessment Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="FinOps Assessment" [subtitle]="subtitle()"></app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading assessment data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load assessment" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key maturity metrics">
+        <app-kpi-card label="Overall maturity score" [value]="kpis()!.overallMaturityScore.value | number:'1.0-0'" unit="/100" [deltaPercent]="kpis()!.overallMaturityScore.deltaPercent" [deltaDirection]="kpis()!.overallMaturityScore.deltaDirection" [sparklineData]="kpis()!.overallMaturityScore.sparkline" [status]="kpis()!.overallMaturityScore.value >= 70 ? 'success' : kpis()!.overallMaturityScore.value >= 40 ? 'warning' : 'danger'"></app-kpi-card>
+        <app-kpi-card label="Crawl capabilities" [value]="kpis()!.crawlCount.value | number" [sparklineData]="kpis()!.crawlCount.sparkline" [status]="kpis()!.crawlCount.value > 0 ? 'warning' : 'success'"></app-kpi-card>
+        <app-kpi-card label="Walk capabilities" [value]="kpis()!.walkCount.value | number" [sparklineData]="kpis()!.walkCount.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Run capabilities" [value]="kpis()!.runCount.value | number" [sparklineData]="kpis()!.runCount.sparkline" [status]="kpis()!.runCount.value > 0 ? 'success' : 'neutral'"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <section class="chart-grid" aria-label="Maturity charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Maturity radar — all capabilities</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="radarSeries()" [chart]="radarChart" [xaxis]="{ categories: radarCategories() }" [colors]="radarColors" [tooltip]="radarTooltip" [dataLabels]="radarDataLabels"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Score by capability</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="capSeries()" [chart]="capChart" [xaxis]="capXAxis()" [yaxis]="capYAxis" [plotOptions]="capPlotOptions" [colors]="capColors()" [tooltip]="capTooltip" [dataLabels]="capDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Capability detail</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (capRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="capRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Maturity capabilities table"></ag-grid-angular>
+          } @else { <app-empty-state icon="bar-chart-outline" title="No capability data" description="Assessment data not yet available."></app-empty-state> }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

@@ -1,0 +1,137 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List pattern: PageHeader → summary row → filter toolbar → AG Grid with download actions -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Reports" subtitle="Generated and scheduled cost, allocation, and compliance reports">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export report list as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export list
+        </ion-button>
+        @if (canGenerate()) {
+          <ion-button fill="solid" color="primary" (click)="generateReport()">
+            <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+            Generate report
+          </ion-button>
+        }
+      </div>
+    </app-page-header>
+
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Report summary">
+        <div class="summary-stat"><div class="summary-label">Total</div><div class="summary-value">{{ s.total }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Ready</div><div class="summary-value summary-value-success">{{ s.ready }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Scheduled</div><div class="summary-value summary-value-info">{{ s.scheduled }}</div></div>
+        <div class="summary-stat">
+          <div class="summary-label">Generating</div>
+          <div class="summary-value" [class.summary-value-info]="s.generating > 0">{{ s.generating }}</div>
+        </div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading reports..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load reports" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter reports">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search by report name..." debounce="300" animated="true"
+            [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search reports">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-rpt-status" fill="outline" color="medium">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-rpt-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)">
+                    <ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-rpt-category" fill="outline" color="medium">
+            <ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>
+            Category
+            @if (categoryFilter().length > 0) { <span class="filter-count">{{ categoryFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-rpt-category" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (c of categoryOptions; track c) {
+                  <ion-item button (click)="toggleCategoryFilter(c)">
+                    <ion-checkbox slot="start" [checked]="categoryFilter().includes(c)" [attr.aria-label]="'Filter by category ' + c"></ion-checkbox>
+                    <ion-label>{{ c }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (s of statusFilter(); track s) {
+            <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove filter ' + s">
+              <ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (c of categoryFilter(); track c) {
+            <ion-chip (click)="toggleCategoryFilter(c)" [attr.aria-label]="'Remove filter ' + c">
+              <ion-label>{{ c }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">{{ total() | number }} report{{ total() !== 1 ? 's' : '' }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <div (click)="onGridClick($event)">
+              <ag-grid-angular
+                class="ag-theme-quartz finops-grid"
+                [rowData]="rows()"
+                [columnDefs]="colDefs"
+                [defaultColDef]="defaultColDef"
+                [pagination]="true"
+                [paginationPageSize]="20"
+                [paginationPageSizeSelector]="[10, 20, 50, 100]"
+                [animateRows]="true"
+                (gridReady)="onGridReady($event)"
+                aria-label="Reports table">
+              </ag-grid-angular>
+            </div>
+          } @else {
+            <app-empty-state icon="document-text-outline" title="No reports match your filters"
+              description="Try adjusting your search or filter criteria, or generate a new report."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

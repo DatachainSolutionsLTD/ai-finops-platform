@@ -1,0 +1,149 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader → KPIs → Narrative → stacked tier bar → donut + rec grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Storage Optimizer" [subtitle]="subtitle()">
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading storage optimization data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load storage optimization data"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key storage optimization metrics">
+        <app-kpi-card
+          label="Total storage spend"
+          [value]="kpis()!.totalStorageSpend.value | number:'1.0-0'"
+          [unit]="kpis()!.totalStorageSpend.currency"
+          [deltaPercent]="kpis()!.totalStorageSpend.deltaPercent"
+          [deltaDirection]="kpis()!.totalStorageSpend.deltaDirection"
+          [sparklineData]="kpis()!.totalStorageSpend.sparkline"
+          status="neutral">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Storage waste"
+          [value]="kpis()!.storageWaste.value | number:'1.0-0'"
+          [unit]="kpis()!.storageWaste.currency"
+          [deltaPercent]="kpis()!.storageWaste.deltaPercent"
+          [deltaDirection]="kpis()!.storageWaste.deltaDirection"
+          [sparklineData]="kpis()!.storageWaste.sparkline"
+          [status]="kpis()!.storageWaste.deltaDirection === 'down' ? 'success' : 'warning'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Orphaned resources"
+          [value]="kpis()!.orphanedResources.value | number"
+          [deltaPercent]="kpis()!.orphanedResources.deltaPercent"
+          [deltaDirection]="kpis()!.orphanedResources.deltaDirection"
+          [sparklineData]="kpis()!.orphanedResources.sparkline"
+          [status]="kpis()!.orphanedResources.value > 0 ? 'warning' : 'success'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Tiering opportunity"
+          [value]="kpis()!.tieringOpportunity.value | number:'1.0-0'"
+          [unit]="kpis()!.tieringOpportunity.currency"
+          [deltaPercent]="kpis()!.tieringOpportunity.deltaPercent"
+          [deltaDirection]="kpis()!.tieringOpportunity.deltaDirection"
+          [sparklineData]="kpis()!.tieringOpportunity.sparkline"
+          status="neutral">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block
+          [summary]="n.summary"
+          [highlights]="n.highlights"
+          [agentName]="n.agentName"
+          [generatedAt]="n.generatedAt">
+        </app-narrative-block>
+      }
+
+      <!-- Full-width stacked tier spend bar -->
+      <ion-card class="chart-card-full">
+        <ion-card-header>
+          <ion-card-title>Storage spend by tier (monthly)</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <apx-chart
+            [series]="tierSeries()"
+            [chart]="tierChart"
+            [xaxis]="tierXAxis()"
+            [yaxis]="tierYAxis"
+            [plotOptions]="tierPlotOptions"
+            [colors]="tierColors"
+            [tooltip]="tierTooltip"
+            [dataLabels]="tierDataLabels"
+            [legend]="tierLegend"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2-col: opportunity donut + recommendations grid -->
+      <section class="lower-grid" aria-label="Storage optimization detail">
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Savings by opportunity type</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (oppSeries().length > 0) {
+              <apx-chart
+                [series]="oppSeries()"
+                [chart]="oppChart"
+                [labels]="oppLabels()"
+                [colors]="oppColors"
+                [legend]="oppLegend"
+                [plotOptions]="oppPlotOptions"
+                [dataLabels]="oppDataLabels"
+                [tooltip]="oppTooltip">
+              </apx-chart>
+            } @else {
+              <app-empty-state icon="archive-outline" title="No opportunities" description="No storage optimization opportunities detected."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="grid-card">
+          <ion-card-header>
+            <ion-card-title>Storage recommendations</ion-card-title>
+          </ion-card-header>
+          <ion-card-content class="grid-content">
+            @if (recRows().length > 0) {
+              <ag-grid-angular
+                class="ag-theme-quartz finops-grid"
+                [rowData]="recRows()"
+                [columnDefs]="colDefs"
+                [defaultColDef]="defaultColDef"
+                [pagination]="false"
+                [animateRows]="true"
+                aria-label="Storage optimization recommendations table">
+              </ag-grid-angular>
+            } @else {
+              <app-empty-state
+                icon="checkmark-circle-outline"
+                title="No recommendations"
+                description="All storage resources are optimally configured.">
+              </app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

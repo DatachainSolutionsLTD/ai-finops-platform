@@ -1,0 +1,51 @@
+<!-- FinOps Platform Design System v1.1 — Tagging Hygiene Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Tagging Hygiene" [subtitle]="subtitle()">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="primary" (click)="runScan()" aria-label="Trigger on-demand tag scan"><ion-icon name="refresh-outline" slot="start" aria-hidden="true"></ion-icon>Run scan now</ion-button>
+      </div>
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading tagging data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load tagging data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key tagging metrics">
+        <app-kpi-card label="Overall compliance rate" [value]="kpis()!.overallComplianceRate.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.overallComplianceRate.deltaPercent" [deltaDirection]="kpis()!.overallComplianceRate.deltaDirection" [sparklineData]="kpis()!.overallComplianceRate.sparkline" [status]="kpis()!.overallComplianceRate.value >= 90 ? 'success' : kpis()!.overallComplianceRate.value >= 70 ? 'warning' : 'danger'"></app-kpi-card>
+        <app-kpi-card label="Non-compliant resources" [value]="kpis()!.nonCompliantResources.value | number" [deltaPercent]="kpis()!.nonCompliantResources.deltaPercent" [deltaDirection]="kpis()!.nonCompliantResources.deltaDirection" [sparklineData]="kpis()!.nonCompliantResources.sparkline" [status]="kpis()!.nonCompliantResources.deltaDirection === 'down' ? 'success' : 'warning'"></app-kpi-card>
+        <app-kpi-card label="Untagged cost" [value]="kpis()!.untaggedCost.value | number:'1.0-0'" [unit]="kpis()!.untaggedCost.currency" [deltaPercent]="kpis()!.untaggedCost.deltaPercent" [deltaDirection]="kpis()!.untaggedCost.deltaDirection" [sparklineData]="kpis()!.untaggedCost.sparkline" [status]="kpis()!.untaggedCost.deltaDirection === 'down' ? 'success' : 'warning'"></app-kpi-card>
+        <app-kpi-card label="Auto-tagged today" [value]="kpis()!.autoTaggedToday.value | number" [deltaPercent]="kpis()!.autoTaggedToday.deltaPercent" [deltaDirection]="kpis()!.autoTaggedToday.deltaDirection" [sparklineData]="kpis()!.autoTaggedToday.sparkline" status="success"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <section class="chart-grid" aria-label="Tagging compliance charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Compliance trend (12 months)</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="trendSeries()" [chart]="trendChart" [xaxis]="trendXAxis()" [yaxis]="trendYAxis" [stroke]="trendStroke" [colors]="trendColors" [tooltip]="trendTooltip" [dataLabels]="trendDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Compliance rate by business unit</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="buSeries()" [chart]="buChart" [xaxis]="buXAxis()" [yaxis]="buYAxis" [plotOptions]="buPlotOptions" [colors]="buColors()" [tooltip]="buTooltip" [dataLabels]="buDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Remediation queue — top priority untagged resources</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (remRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="remRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Tag remediation queue"></ag-grid-angular>
+          } @else {
+            <app-empty-state icon="checkmark-circle-outline" title="Remediation queue is empty" description="All resources are tagged correctly."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

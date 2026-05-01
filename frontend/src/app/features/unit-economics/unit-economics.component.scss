@@ -1,0 +1,169 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// Unit Economics Dashboard — tokens only, no hex literals.
+// Key feature: CPT heatmap with semantic colour cells.
+
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+
+.kpi-row { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (min-width: 576px) { grid-template-columns: repeat(2, 1fr); } @media (min-width: 992px) { grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-6); } }
+
+app-narrative-block { display: block; margin-bottom: var(--finops-space-6); }
+
+// ── Full-width CPT trend card ─────────────────────────────────────────────
+.chart-card-full {
+  margin: 0 0 var(--finops-space-6) 0; background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-4); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+
+// ── Lower 2-col grid ─────────────────────────────────────────────────────
+.lower-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--finops-space-6);
+  @media (min-width: 992px) { grid-template-columns: 1.6fr 1fr; }
+}
+
+// ── Leaderboard grid card ─────────────────────────────────────────────────
+.grid-card {
+  margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); }
+}
+.grid-content { padding: var(--finops-space-4) 0 0 0; }
+.finops-grid  { width: 100%; height: 380px; }
+
+// ── Heatmap card ──────────────────────────────────────────────────────────
+.heatmap-card {
+  margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-6) var(--finops-space-6); }
+}
+
+// ── Heatmap table ─────────────────────────────────────────────────────────
+.heatmap-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.heatmap-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+
+  &.heatmap-header {
+    margin-bottom: var(--finops-space-1);
+  }
+}
+
+.heatmap-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 40px;
+  border-radius: var(--finops-radius-sm);
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+  font-family: var(--finops-font-mono);
+  transition: opacity var(--finops-duration-fast) var(--finops-easing-standard);
+}
+
+.heatmap-label-cell {
+  min-width: 120px;
+  justify-content: flex-start;
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-semibold);
+  color: var(--finops-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.heatmap-col-header {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-semibold);
+  color: var(--finops-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: transparent;
+}
+
+.heatmap-row-label {
+  min-width: 120px;
+  justify-content: flex-start;
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-text-primary);
+  background-color: transparent;
+  padding-right: var(--finops-space-2);
+}
+
+.heatmap-data-cell {
+  cursor: default;
+
+  // Semantic heat colours — all token-based
+  &.heat-excellent { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+  &.heat-ok        { background-color: var(--finops-success-subtle); color: var(--finops-success); opacity: 0.65; }
+  &.heat-warn      { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+  &.heat-critical  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+  &.heat-zero      { background-color: var(--finops-bg-subtle); color: var(--finops-text-disabled); }
+}
+
+// ── Heatmap legend ────────────────────────────────────────────────────────
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--finops-space-4);
+  margin-top: var(--finops-space-4);
+  padding-top: var(--finops-space-3);
+  border-top: 1px solid var(--finops-border-subtle);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-2);
+  font-size: var(--finops-text-xs);
+  color: var(--finops-text-secondary);
+}
+.legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--finops-radius-sm);
+  flex-shrink: 0;
+  &.heat-excellent { background-color: var(--finops-success-subtle); border: 1px solid var(--finops-success); }
+  &.heat-ok        { background-color: var(--finops-success-subtle); border: 1px solid var(--finops-success); opacity: 0.65; }
+  &.heat-warn      { background-color: var(--finops-warning-subtle); border: 1px solid var(--finops-warning); }
+  &.heat-critical  { background-color: var(--finops-danger-subtle);  border: 1px solid var(--finops-danger); }
+}
+
+// ── AG Grid cell renderers ────────────────────────────────────────────────
+:host ::ng-deep {
+  .rank-cell { font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); color: var(--finops-text-tertiary); }
+
+  .app-cell  { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 2px; }
+  .app-name  { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .app-bu    { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+
+  .rating-badge {
+    display: inline-flex; align-items: center; padding: 2px var(--finops-space-2);
+    border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.rating-excellent { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.rating-good      { background-color: var(--finops-info-subtle);    color: var(--finops-info); }
+    &.rating-warn      { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.rating-critical  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+  }
+
+  .cpt-cell  { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .mom-bad   { color: var(--finops-danger);       font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); }
+  .mom-warn  { color: var(--finops-warning-dark); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .mom-good  { color: var(--finops-success);      font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+}

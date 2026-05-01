@@ -1,0 +1,268 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// ─────────────────────────────────────────────────────────────────────────────
+
+:host {
+  display: block;
+}
+
+// ── Auth banner (info / warning / danger) ────────────────────────────────
+.auth-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--finops-space-2);
+  padding: var(--finops-space-3) var(--finops-space-4);
+  border-radius: var(--finops-radius-md);
+  font-size: var(--finops-text-sm);
+  font-family: var(--finops-font-family);
+  line-height: var(--finops-leading-relaxed);
+
+  ion-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  &.banner-info {
+    background: var(--finops-info-subtle);
+    color: var(--finops-info-dark);
+    border: 1px solid var(--finops-info);
+    ion-icon { color: var(--finops-info); }
+  }
+
+  &.banner-warning {
+    background: var(--finops-warning-subtle);
+    color: var(--finops-warning-dark);
+    border: 1px solid var(--finops-warning);
+    ion-icon { color: var(--finops-warning); }
+  }
+
+  &.banner-danger {
+    background: var(--finops-danger-subtle);
+    color: var(--finops-danger-dark);
+    border: 1px solid var(--finops-danger);
+    ion-icon { color: var(--finops-danger); }
+  }
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finops-space-5);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finops-space-2);
+}
+
+.form-field label,
+.field-label-row label {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-text-primary);
+  line-height: var(--finops-leading-tight);
+
+  .req {
+    color: var(--finops-danger);
+    margin-left: 2px;
+  }
+}
+
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--finops-space-2);
+}
+
+.field-link {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-brand-primary);
+  text-decoration: none;
+  transition: var(--finops-transition-default);
+
+  &:hover {
+    color: var(--finops-brand-primary-hover);
+    text-decoration: underline;
+  }
+}
+
+ion-input {
+  --background: var(--finops-bg-surface);
+  --color: var(--finops-text-primary);
+  --placeholder-color: var(--finops-text-tertiary);
+  --border-color: var(--finops-border-default);
+  --border-radius: var(--finops-radius-md);
+  --highlight-color-focused: var(--finops-brand-primary);
+  --padding-top: var(--finops-space-3);
+  --padding-bottom: var(--finops-space-3);
+  --padding-start: var(--finops-space-3);
+  --padding-end: var(--finops-space-3);
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm);
+  min-height: 44px;
+
+  &.invalid {
+    --border-color: var(--finops-danger);
+    --highlight-color-focused: var(--finops-danger);
+  }
+}
+
+// Password visibility toggle
+.password-wrapper {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: var(--finops-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: var(--finops-space-1);
+  color: var(--finops-text-tertiary);
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--finops-radius-sm);
+  transition: var(--finops-transition-default);
+
+  &:hover {
+    color: var(--finops-text-primary);
+    background: var(--finops-bg-subtle);
+  }
+
+  ion-icon {
+    font-size: 18px;
+  }
+}
+
+.field-error {
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-danger);
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-1);
+
+  &::before {
+    content: '⚠';
+    font-size: 14px;
+  }
+}
+
+// Remember me checkbox row
+.form-field-inline {
+  display: flex;
+  align-items: center;
+}
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: var(--finops-space-2);
+  cursor: pointer;
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm);
+  color: var(--finops-text-secondary);
+}
+
+ion-checkbox {
+  --checkbox-background-checked: var(--finops-brand-primary);
+  --border-color-checked: var(--finops-brand-primary);
+  --border-radius: var(--finops-radius-sm);
+  --size: 18px;
+}
+
+// Primary submit button
+ion-button[type="submit"] {
+  --border-radius: var(--finops-radius-md);
+  --padding-top: var(--finops-space-3);
+  --padding-bottom: var(--finops-space-3);
+  font-family: var(--finops-font-family);
+  font-weight: var(--finops-font-semibold);
+  font-size: var(--finops-text-base);
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: var(--finops-space-2);
+  min-height: 48px;
+}
+
+// Divider between primary flow and SSO
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--finops-text-tertiary);
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--finops-border-default);
+  }
+
+  span {
+    padding: 0 var(--finops-space-3);
+  }
+}
+
+// SSO button
+.auth-sso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finops-space-2);
+}
+
+.sso-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--finops-space-2);
+  padding: var(--finops-space-3) var(--finops-space-4);
+  border: 1px solid var(--finops-border-default);
+  background: var(--finops-bg-surface);
+  border-radius: var(--finops-radius-md);
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-text-primary);
+  cursor: pointer;
+  min-height: 44px;
+  transition: var(--finops-transition-default);
+
+  &:hover:not(:disabled) {
+    background: var(--finops-bg-subtle);
+    border-color: var(--finops-border-strong);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  ion-icon {
+    font-size: 18px;
+    color: var(--finops-text-secondary);
+  }
+}
+
+.sso-hint {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  color: var(--finops-text-tertiary);
+  text-align: center;
+}

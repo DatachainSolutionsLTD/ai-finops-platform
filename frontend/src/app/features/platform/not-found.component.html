@@ -1,0 +1,66 @@
+<!-- FinOps Platform Design System v1.1 — 404 Not Found -->
+<!-- Special pattern: full-page centered, no ion-split-pane, no side nav -->
+<ion-content class="not-found-content">
+  <div class="not-found-shell" role="main">
+
+    <!-- Glyph / illustration area -->
+    <div class="not-found-glyph" aria-hidden="true">
+      <div class="glyph-four">4</div>
+      <div class="glyph-icon">
+        <ion-icon name="cloud-offline-outline"></ion-icon>
+      </div>
+      <div class="glyph-four">4</div>
+    </div>
+
+    <!-- Card -->
+    <div class="not-found-card" role="alert" aria-live="polite">
+      <h1 class="not-found-title">Page not found</h1>
+      <p class="not-found-message">
+        The page you're looking for doesn't exist, was moved, or you may not
+        have permission to view it.
+      </p>
+
+      @if (attemptedPath()) {
+        <p class="not-found-path" aria-label="Attempted path">
+          <ion-icon name="link-outline" aria-hidden="true"></ion-icon>
+          <code>{{ attemptedPath() }}</code>
+        </p>
+      }
+
+      <!-- Navigation actions -->
+      <div class="not-found-actions" role="group" aria-label="Navigation options">
+        <ion-button
+          fill="solid"
+          color="primary"
+          (click)="goHome()"
+          aria-label="Return to My Dashboard">
+          <ion-icon name="home-outline" slot="start" aria-hidden="true"></ion-icon>
+          My Dashboard
+        </ion-button>
+        <ion-button
+          fill="outline"
+          color="medium"
+          (click)="goBack()"
+          aria-label="Go back to previous page">
+          <ion-icon name="arrow-back-outline" slot="start" aria-hidden="true"></ion-icon>
+          Go back
+        </ion-button>
+        <ion-button
+          fill="clear"
+          color="medium"
+          (click)="goSupport()"
+          aria-label="Open a support case">
+          <ion-icon name="chatbox-outline" slot="start" aria-hidden="true"></ion-icon>
+          Get help
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Platform branding footer -->
+    <p class="not-found-brand" aria-label="FinOps Platform">
+      <ion-icon name="analytics-outline" aria-hidden="true"></ion-icon>
+      FinOps Platform
+    </p>
+
+  </div>
+</ion-content>

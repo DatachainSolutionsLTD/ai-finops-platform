@@ -1,0 +1,77 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// Forecasts Dashboard — tokens only, no hex literals.
+
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+
+.header-controls { display: flex; flex-wrap: wrap; gap: var(--finops-space-3); align-items: flex-end; }
+.control-group   { display: flex; flex-direction: column; gap: var(--finops-space-1); ion-select { min-width: 140px; --border-radius: var(--finops-radius-md); } }
+.control-label   { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.kpi-row { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (min-width: 576px) { grid-template-columns: repeat(2, 1fr); } @media (min-width: 992px) { grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-6); } }
+
+app-narrative-block { display: block; margin-bottom: var(--finops-space-6); }
+
+.chart-card-full {
+  margin: 0 0 var(--finops-space-6) 0; background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-4); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+
+.chart-grid { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-6); margin-bottom: var(--finops-space-8); @media (min-width: 992px) { grid-template-columns: repeat(2, 1fr); } }
+.chart-card {
+  margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm);
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-4); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+
+// ── Early warning list card ───────────────────────────────────────────────
+.warn-summary-card ion-card-content { padding: var(--finops-space-4) var(--finops-space-6) var(--finops-space-6); }
+.warn-list { display: flex; flex-direction: column; gap: var(--finops-space-4); }
+.warn-item {
+  display: flex; align-items: center; gap: var(--finops-space-3);
+  padding: var(--finops-space-3) var(--finops-space-4);
+  background-color: var(--finops-bg-subtle); border-radius: var(--finops-radius-md);
+}
+.warn-dot {
+  width: 10px; height: 10px; border-radius: var(--finops-radius-full); flex-shrink: 0;
+  &.warn-dot-critical     { background-color: var(--finops-danger); }
+  &.warn-dot-warning      { background-color: var(--finops-warning); }
+  &.warn-dot-informational{ background-color: var(--finops-info); }
+}
+.warn-info  { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.warn-dim   { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.warn-meta  { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+.warn-date  { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-text-secondary); white-space: nowrap; }
+
+// ── Grid card ─────────────────────────────────────────────────────────────
+.grid-card { margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; } ion-card-title { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); } }
+.grid-content { padding: var(--finops-space-4) 0 0 0; }
+.finops-grid  { width: 100%; height: 240px; }
+
+:host ::ng-deep {
+  .sev-badge {
+    display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-bold);
+    &.sev-critical { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+    &.sev-warning  { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.sev-info     { background-color: var(--finops-info-subtle);    color: var(--finops-info); }
+  }
+  .dim-cell { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 2px; }
+  .dim-name { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .dim-type { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+  .amount-cell { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .var-high { color: var(--finops-danger);       font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); }
+  .var-mid  { color: var(--finops-warning-dark); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); }
+  .var-ok   { color: var(--finops-success);      font-size: var(--finops-text-sm); }
+  .status-badge {
+    display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.success { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.warning { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.danger  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+    &.neutral { background-color: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+  }
+}

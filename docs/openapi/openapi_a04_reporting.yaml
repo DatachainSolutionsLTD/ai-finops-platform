@@ -1,0 +1,378 @@
+openapi: 3.1.0
+info:
+  title: Reporting & Analytics Agent API (A04)
+  description: |
+    REST API for the Reporting & Analytics Agent — manages report definitions,
+    generation, dashboards, natural language queries, proactive insights, and
+    consumption analytics. Domain: Analytics. Seed Round scope.
+  version: 1.0.0
+servers:
+  - url: /api/v1/reporting
+security:
+  - BearerAuth: []
+tags:
+  - name: Reports
+  - name: Dashboards
+  - name: NL Query
+  - name: Insights
+  - name: Export
+
+paths:
+  /reports:
+    get:
+      tags: [Reports]
+      summary: List report definitions
+      operationId: listReports
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: report_type, in: query, schema: { type: string, enum: [Cost_Summary, Budget_Variance, Optimization_Summary, Executive_Briefing, Chargeback, Governance_Scorecard, Custom] } }
+        - { name: persona_target, in: query, schema: { type: string, enum: [Executive, Finance, Engineering, FinOps_Analyst, All] } }
+        - { name: is_active, in: query, schema: { type: boolean, default: true } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ReportDefinition' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+    post:
+      tags: [Reports]
+      summary: Create a report definition
+      operationId: createReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportCreateRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDefinition' }
+
+  /reports/{report_id}:
+    parameters:
+      - { name: report_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Reports]
+      summary: Get report definition details
+      operationId: getReport
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDefinition' }
+    put:
+      tags: [Reports]
+      summary: Update a report definition
+      operationId: updateReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportCreateRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDefinition' }
+
+  /reports/{report_id}/generate:
+    post:
+      tags: [Reports]
+      summary: Trigger on-demand report generation
+      operationId: generateReport
+      parameters:
+        - { name: report_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                time_range_override: { type: string, enum: [Last_7d, Last_30d, Last_90d, MTD, QTD, YTD] }
+                filter_overrides: { type: object }
+                output_formats: { type: array, items: { type: string, enum: [PDF, CSV, XLSX, Dashboard] } }
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generation_id: { type: string, format: uuid }
+                  status: { type: string, const: Running }
+                  estimated_duration_seconds: { type: integer }
+
+  /reports/generations:
+    get:
+      tags: [Reports]
+      summary: List report generation runs
+      operationId: listGenerations
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: report_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [Running, Completed, Partial, Failed, Timeout] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ReportGeneration' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  /dashboards/{dashboard_id}:
+    get:
+      tags: [Dashboards]
+      summary: Get dashboard data payload
+      operationId: getDashboardData
+      parameters:
+        - { name: dashboard_id, in: path, required: true, schema: { type: string } }
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: time_range, in: query, schema: { type: string, enum: [Last_7d, Last_30d, Last_90d, MTD, QTD, YTD] } }
+        - { name: filters, in: query, schema: { type: string }, description: "JSON-encoded dimension filters" }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dashboard_id: { type: string }
+                  tenant_id: { type: string, format: uuid }
+                  generated_at: { type: string, format: date-time }
+                  data_freshness: { type: string, format: date-time }
+                  kpi_cards: { type: array, items: { type: object } }
+                  charts: { type: array, items: { type: object } }
+                  tables: { type: array, items: { type: object } }
+
+  /dashboards/executive:
+    get:
+      tags: [Dashboards]
+      summary: Get executive dashboard (KPIs, trends, forecasts)
+      operationId: getExecutiveDashboard
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_spend_sar: { type: number }
+                  mom_change_pct: { type: number }
+                  budget_utilization_pct: { type: number }
+                  forecast_accuracy_pct: { type: number }
+                  optimization_savings_sar: { type: number }
+                  spend_trend_12m: { type: array, items: { type: object } }
+                  spend_by_provider: { type: array, items: { type: object } }
+                  top_cost_drivers: { type: array, items: { type: object } }
+
+  /nl-query:
+    post:
+      tags: [NL Query]
+      summary: Submit a natural language cost query
+      operationId: submitNLQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query_text]
+              properties:
+                query_text: { type: string, maxLength: 2000 }
+                session_id: { type: string, format: uuid, description: "For multi-turn conversations" }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query_id: { type: string, format: uuid }
+                  session_id: { type: string, format: uuid }
+                  intent: { type: string }
+                  confidence: { type: number }
+                  response_type: { type: string, enum: [Narrative, Chart, Table, Clarification, Error] }
+                  narrative: { type: string }
+                  data: { type: object }
+                  sql_generated: { type: string }
+                  suggestions: { type: array, items: { type: string } }
+
+  /nl-query/{query_id}/feedback:
+    post:
+      tags: [NL Query]
+      summary: Submit feedback on NL query response
+      operationId: submitNLFeedback
+      parameters:
+        - { name: query_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feedback]
+              properties:
+                feedback: { type: string, enum: [Positive, Negative] }
+      responses:
+        '204': { description: Feedback recorded }
+
+  /insights:
+    get:
+      tags: [Insights]
+      summary: List proactive insights
+      operationId: listInsights
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: insight_type, in: query, schema: { type: string, enum: [Trend, Efficiency, Governance, Benchmark, Forecast, Budget] } }
+        - { name: severity, in: query, schema: { type: string, enum: [Informational, Warning, Critical] } }
+        - { name: engagement_status, in: query, schema: { type: string, enum: [Pending, Viewed, Dismissed, Acted_Upon] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ProactiveInsight' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  /insights/{insight_id}/engage:
+    post:
+      tags: [Insights]
+      summary: Mark insight as viewed/dismissed/acted upon
+      operationId: engageInsight
+      parameters:
+        - { name: insight_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [engagement_status]
+              properties:
+                engagement_status: { type: string, enum: [Viewed, Dismissed, Acted_Upon] }
+      responses:
+        '204': { description: Engagement recorded }
+
+  /export/{generation_id}:
+    get:
+      tags: [Export]
+      summary: Download a generated report file
+      operationId: downloadReport
+      parameters:
+        - { name: generation_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: format, in: query, schema: { type: string, enum: [pdf, csv, xlsx, png], default: pdf } }
+      responses:
+        '200':
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404': { description: Generation not found or still in progress }
+
+  /health/summary:
+    get:
+      tags: [Reports]
+      summary: Get reporting health dashboard summary
+      operationId: getReportingHealth
+      parameters:
+        - { name: X-Tenant-ID, in: header, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_reports: { type: integer }
+                  generated_on_time_pct: { type: number }
+                  failed_count: { type: integer }
+                  avg_generation_seconds: { type: integer }
+                  consumption_rate_pct: { type: number }
+                  nl_queries_today: { type: integer }
+                  insights_pending: { type: integer }
+
+components:
+  securitySchemes:
+    BearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total_items: { type: integer }
+        total_pages: { type: integer }
+
+    ReportDefinition:
+      type: object
+      properties:
+        report_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        report_name: { type: string }
+        report_type: { type: string }
+        template_id: { type: string, format: uuid }
+        schedule_cron: { type: string }
+        time_range_type: { type: string }
+        granularity: { type: string }
+        distribution_channels: { type: array, items: { type: string } }
+        persona_target: { type: string }
+        is_active: { type: boolean }
+        created_date: { type: string, format: date-time }
+
+    ReportCreateRequest:
+      type: object
+      required: [report_name, report_type, template_id, time_range_type, granularity, distribution_channels]
+      properties:
+        report_name: { type: string, minLength: 3, maxLength: 200 }
+        report_type: { type: string, enum: [Cost_Summary, Budget_Variance, Optimization_Summary, Executive_Briefing, Chargeback, Governance_Scorecard, Custom] }
+        template_id: { type: string, format: uuid }
+        schedule_cron: { type: string }
+        time_range_type: { type: string, enum: [Last_7d, Last_30d, Last_90d, MTD, QTD, YTD, Custom] }
+        granularity: { type: string, enum: [Daily, Weekly, Monthly] }
+        filter_config_json: { type: object }
+        recipient_list: { type: array, items: { type: string, format: uuid } }
+        distribution_channels: { type: array, items: { type: string, enum: [Email, Dashboard, API, Webhook] } }
+        persona_target: { type: string, enum: [Executive, Finance, Engineering, FinOps_Analyst, All] }
+
+    ReportGeneration:
+      type: object
+      properties:
+        generation_id: { type: string, format: uuid }
+        report_id: { type: string, format: uuid }
+        trigger_type: { type: string }
+        start_timestamp: { type: string, format: date-time }
+        end_timestamp: { type: string, format: date-time }
+        status: { type: string }
+        records_queried: { type: integer }
+        duration_seconds: { type: integer }
+        output_formats: { type: string }
+        file_size_bytes: { type: integer }
+        distribution_count: { type: integer }
+
+    ProactiveInsight:
+      type: object
+      properties:
+        insight_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        insight_type: { type: string }
+        severity: { type: string }
+        narrative_text: { type: string }
+        data_snapshot: { type: object }
+        relevance_score: { type: number }
+        engagement_status: { type: string }
+        related_agent_id: { type: string }
+        generation_timestamp: { type: string, format: date-time }

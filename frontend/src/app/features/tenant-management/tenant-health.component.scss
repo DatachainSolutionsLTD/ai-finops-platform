@@ -1,0 +1,36 @@
+// FinOps Platform Design System v1.1 — Tenant Health Dashboard — tokens only.
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (max-width: 992px) { grid-template-columns: repeat(2, 1fr); } @media (max-width: 480px) { grid-template-columns: 1fr; } }
+
+.chart-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--finops-space-6); @media (max-width: 960px) { grid-template-columns: 1fr; } }
+
+.chart-card {
+  background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); margin: 0;
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+
+// ── Radar legend ──────────────────────────────────────────────────────────
+.radar-legend { display: flex; justify-content: center; gap: var(--finops-space-4); margin-top: var(--finops-space-2); }
+.legend-item  { display: flex; align-items: center; gap: var(--finops-space-1); font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+.legend-dot   { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.legend-run   { background-color: var(--finops-success); }
+.legend-walk  { background-color: var(--finops-warning); }
+.legend-crawl { background-color: var(--finops-danger); }
+
+// ── Agent tier table ──────────────────────────────────────────────────────
+.tier-table {
+  width: 100%; border-collapse: collapse; margin-top: var(--finops-space-4);
+  th, td { padding: var(--finops-space-2) var(--finops-space-3); font-size: var(--finops-text-sm); text-align: left; border-bottom: 1px solid var(--finops-border-subtle); }
+  th { font-weight: var(--finops-font-semibold); color: var(--finops-text-tertiary); font-size: var(--finops-text-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+}
+.tier-name    { font-weight: var(--finops-font-medium); color: var(--finops-text-primary); }
+.tier-ok      { color: var(--finops-success); font-weight: var(--finops-font-semibold); }
+.tier-warn    { color: var(--finops-warning-dark); font-weight: var(--finops-font-semibold); }
+.tier-fail    { color: var(--finops-danger); font-weight: var(--finops-font-bold); }
+.tier-row-warn { background-color: var(--finops-warning-subtle); }

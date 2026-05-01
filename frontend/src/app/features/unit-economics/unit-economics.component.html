@@ -1,0 +1,158 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader+TimeRange → KPIs → Narrative → CPT trend → leaderboard grid + heatmap -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Unit Economics" [subtitle]="subtitle()">
+      <app-time-range-selector slot="actions" [value]="timeRange()" [options]="timeRangeOptions" (valueChange)="onTimeRangeChange($event)"></app-time-range-selector>
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading unit economics data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load unit economics" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key unit economics metrics">
+        <app-kpi-card
+          label="Avg cost per transaction"
+          [value]="kpis()!.avgCpt.value | number:'1.4-4'"
+          [unit]="kpis()!.avgCpt.currency"
+          [deltaPercent]="kpis()!.avgCpt.deltaPercent"
+          [deltaDirection]="kpis()!.avgCpt.deltaDirection"
+          [sparklineData]="kpis()!.avgCpt.sparkline"
+          [status]="kpis()!.avgCpt.deltaDirection === 'down' ? 'success' : 'warning'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Total transactions"
+          [value]="kpis()!.totalTransactions.value | number"
+          [deltaPercent]="kpis()!.totalTransactions.deltaPercent"
+          [deltaDirection]="kpis()!.totalTransactions.deltaDirection"
+          [sparklineData]="kpis()!.totalTransactions.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Avg efficiency score (CES)"
+          [value]="kpis()!.avgCes.value | number:'1.2-2'"
+          [deltaPercent]="kpis()!.avgCes.deltaPercent"
+          [deltaDirection]="kpis()!.avgCes.deltaDirection"
+          [sparklineData]="kpis()!.avgCes.sparkline"
+          [status]="kpis()!.avgCes.value >= 0.9 ? 'success' : kpis()!.avgCes.value >= 0.7 ? 'warning' : 'danger'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Critical apps"
+          [value]="kpis()!.criticalApps.value | number"
+          [deltaPercent]="kpis()!.criticalApps.deltaPercent"
+          [deltaDirection]="kpis()!.criticalApps.deltaDirection"
+          [sparklineData]="kpis()!.criticalApps.sparkline"
+          [status]="kpis()!.criticalApps.value > 0 ? 'danger' : 'success'">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block>
+      }
+
+      <!-- Full-width CPT trend -->
+      <ion-card class="chart-card chart-card-full">
+        <ion-card-header>
+          <ion-card-title>Cost per transaction (CPT) trend</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <apx-chart
+            [series]="cptSeries()"
+            [chart]="cptChart"
+            [xaxis]="cptXAxis()"
+            [yaxis]="cptYAxis"
+            [stroke]="cptStroke"
+            [fill]="cptFill"
+            [colors]="cptColors"
+            [tooltip]="cptTooltip"
+            [dataLabels]="cptDataLabels"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2-col: leaderboard grid + heatmap -->
+      <section class="lower-grid" aria-label="Efficiency detail">
+
+        <!-- Efficiency leaderboard -->
+        <ion-card class="grid-card">
+          <ion-card-header>
+            <ion-card-title>Efficiency leaderboard</ion-card-title>
+          </ion-card-header>
+          <ion-card-content class="grid-content">
+            @if (leaderboardRows().length > 0) {
+              <ag-grid-angular
+                class="ag-theme-quartz finops-grid"
+                [rowData]="leaderboardRows()"
+                [columnDefs]="colDefs"
+                [defaultColDef]="defaultColDef"
+                [pagination]="false"
+                [animateRows]="true"
+                aria-label="Efficiency leaderboard table">
+              </ag-grid-angular>
+            } @else {
+              <app-empty-state icon="podium-outline" title="No leaderboard data" description="No application CPT data available."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <!-- CPT heatmap -->
+        <ion-card class="heatmap-card">
+          <ion-card-header>
+            <ion-card-title>CPT heatmap — BU × environment</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (heatmapRows().length > 0) {
+              <div class="heatmap-container" role="table" aria-label="CPT heatmap by BU and environment">
+                <!-- Header row -->
+                <div class="heatmap-row heatmap-header" role="row">
+                  <div class="heatmap-cell heatmap-label-cell" role="columnheader">BU</div>
+                  @for (col of heatmapCols(); track col) {
+                    <div class="heatmap-cell heatmap-col-header" role="columnheader">{{ col }}</div>
+                  }
+                </div>
+                <!-- Data rows -->
+                @for (row of heatmapRows(); track row.bu) {
+                  <div class="heatmap-row" role="row">
+                    <div class="heatmap-cell heatmap-row-label" role="rowheader">{{ row.bu }}</div>
+                    @for (col of heatmapCols(); track col) {
+                      @if (row.envMap.get(col); as cell) {
+                        <div
+                          class="heatmap-cell heatmap-data-cell {{ cptHeatClass(cell.cpt) }}"
+                          role="cell"
+                          [attr.aria-label]="row.bu + ' ' + col + ': ' + (cell.cpt | number:'1.4-4') + ' AED'">
+                          {{ cell.cpt | number:'1.4-4' }}
+                        </div>
+                      } @else {
+                        <div class="heatmap-cell heatmap-data-cell heat-zero" role="cell" aria-label="No data">—</div>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Legend -->
+              <div class="heatmap-legend" aria-label="Heatmap colour legend">
+                <span class="legend-item"><span class="legend-swatch heat-excellent"></span>Excellent</span>
+                <span class="legend-item"><span class="legend-swatch heat-ok"></span>Good</span>
+                <span class="legend-item"><span class="legend-swatch heat-warn"></span>Needs attention</span>
+                <span class="legend-item"><span class="legend-swatch heat-critical"></span>Critical</span>
+              </div>
+            } @else {
+              <app-empty-state icon="grid-outline" title="No heatmap data" description="No CPT data available for the heatmap."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

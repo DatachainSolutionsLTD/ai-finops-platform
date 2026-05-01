@@ -1,0 +1,52 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader+TimeRange → KPIs → Narrative → portfolio bar + savings bar → rec grid -->
+
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Rate Optimizer" [subtitle]="subtitle()">
+      <app-time-range-selector slot="actions" [value]="timeRange()" [options]="timeRangeOptions" (valueChange)="onTimeRangeChange($event)"></app-time-range-selector>
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading rate optimization data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key rate optimization metrics">
+        <app-kpi-card label="Commitment coverage" [value]="kpis()!.coverageRate.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.coverageRate.deltaPercent" [deltaDirection]="kpis()!.coverageRate.deltaDirection" [sparklineData]="kpis()!.coverageRate.sparkline" [status]="kpis()!.coverageRate.value >= 80 ? 'success' : kpis()!.coverageRate.value >= 60 ? 'warning' : 'danger'"></app-kpi-card>
+        <app-kpi-card label="Pending savings" [value]="kpis()!.pendingSavings.value | number:'1.0-0'" [unit]="kpis()!.pendingSavings.currency" [deltaPercent]="kpis()!.pendingSavings.deltaPercent" [deltaDirection]="kpis()!.pendingSavings.deltaDirection" [sparklineData]="kpis()!.pendingSavings.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Expiring ≤ 120 days" [value]="kpis()!.expiringSoon.value | number" [deltaPercent]="kpis()!.expiringSoon.deltaPercent" [deltaDirection]="kpis()!.expiringSoon.deltaDirection" [sparklineData]="kpis()!.expiringSoon.sparkline" [status]="kpis()!.expiringSoon.value > 0 ? 'warning' : 'success'"></app-kpi-card>
+        <app-kpi-card label="Under-utilised commitments" [value]="kpis()!.underUtilized.value | number" [deltaPercent]="kpis()!.underUtilized.deltaPercent" [deltaDirection]="kpis()!.underUtilized.deltaDirection" [sparklineData]="kpis()!.underUtilized.sparkline" [status]="kpis()!.underUtilized.value > 0 ? 'warning' : 'success'"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <section class="chart-grid" aria-label="Rate optimization charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Portfolio utilisation by commitment</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="portSeries()" [chart]="portChart" [xaxis]="portXAxis()" [yaxis]="portYAxis" [plotOptions]="portPlotOptions" [colors]="portColors()" [tooltip]="portTooltip" [dataLabels]="portDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Projected vs. realized commitment savings</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="trendSeries()" [chart]="trendChart" [xaxis]="trendXAxis()" [yaxis]="trendYAxis" [plotOptions]="trendPlotOptions" [colors]="trendColors" [tooltip]="trendTooltip" [dataLabels]="trendDataLabels" [legend]="trendLegend" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Commitment recommendations</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (recRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="recRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Rate optimization recommendations"></ag-grid-angular>
+          } @else {
+            <app-empty-state icon="pricetag-outline" title="No pending recommendations" description="All commitment recommendations have been actioned."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

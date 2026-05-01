@@ -1,0 +1,48 @@
+<!-- FinOps Platform Design System v1.1 — Agent Activity List -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Agent Activity" subtitle="Real-time health, queue depth, and performance for all 32 platform agents">
+    </app-page-header>
+
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Agent health summary">
+        <div class="summary-stat"><div class="summary-label">Total agents</div><div class="summary-value">{{ s.totalAgents }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Healthy</div><div class="summary-value summary-value-success">{{ s.healthy }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Degraded</div><div class="summary-value" [class.summary-value-warning]="s.degraded > 0">{{ s.degraded }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Failed / Suspended</div><div class="summary-value" [class.summary-value-danger]="s.failed + s.suspended > 0">{{ s.failed + s.suspended }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Total queue depth</div><div class="summary-value" [class.summary-value-warning]="s.totalQueueDepth > 50">{{ s.totalQueueDepth | number }}</div></div>
+      </section>
+    }
+
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading agent status..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load agent activity" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter agents">
+        <div class="searchbar-wrap"><ion-searchbar placeholder="Search by agent name or code..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search agents"></ion-searchbar></div>
+        <div class="filter-chips" role="group">
+          <ion-button id="filter-ag-status" fill="outline" color="medium"><ion-icon name="pulse-outline" slot="start" aria-hidden="true"></ion-icon>Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-ag-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          <ion-button id="filter-ag-tier" fill="outline" color="medium"><ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>Tier @if (tierFilter().length > 0) { <span class="filter-count">{{ tierFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-ag-tier" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (t of tierOptions; track t) { <ion-item button (click)="toggleTierFilter(t)"><ion-checkbox slot="start" [checked]="tierFilter().includes(t)" [attr.aria-label]="'Filter by tier ' + t"></ion-checkbox><ion-label>{{ t }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button> }
+        </div>
+      </div>
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (t of tierFilter(); track t) { <ion-chip (click)="toggleTierFilter(t)" [attr.aria-label]="'Remove ' + t"><ion-label>{{ t }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+        </div>
+      }
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title class="grid-title">{{ total() | number }} agent{{ total() !== 1 ? 's' : '' }}</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="rows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="32" [paginationPageSizeSelector]="[16,32,64]" [animateRows]="true" (gridReady)="onGridReady($event)" aria-label="Agent activity table"></ag-grid-angular>
+          } @else { <app-empty-state icon="analytics-outline" title="No agents match your filters" description="Try adjusting your filters." [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state> }
+        </ion-card-content>
+      </ion-card>
+    }
+  </div>
+</ion-content>

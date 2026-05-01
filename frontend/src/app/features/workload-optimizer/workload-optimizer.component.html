@@ -1,0 +1,57 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader+TimeRange → KPIs → Narrative → 2-col charts → resources grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Workload Optimizer" [subtitle]="subtitle()">
+      <app-time-range-selector slot="actions" [value]="timeRange()" [options]="timeRangeOptions" (valueChange)="onTimeRangeChange($event)"></app-time-range-selector>
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading workload optimization data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key workload optimization metrics">
+        <app-kpi-card label="Optimization opportunities" [value]="kpis()!.totalOpportunities.value | number" [deltaPercent]="kpis()!.totalOpportunities.deltaPercent" [deltaDirection]="kpis()!.totalOpportunities.deltaDirection" [sparklineData]="kpis()!.totalOpportunities.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Pending savings" [value]="kpis()!.pendingSavings.value | number:'1.0-0'" [unit]="kpis()!.pendingSavings.currency" [deltaPercent]="kpis()!.pendingSavings.deltaPercent" [deltaDirection]="kpis()!.pendingSavings.deltaDirection" [sparklineData]="kpis()!.pendingSavings.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Realized savings (90d)" [value]="kpis()!.realizedSavings.value | number:'1.0-0'" [unit]="kpis()!.realizedSavings.currency" [deltaPercent]="kpis()!.realizedSavings.deltaPercent" [deltaDirection]="kpis()!.realizedSavings.deltaDirection" [sparklineData]="kpis()!.realizedSavings.sparkline" status="success"></app-kpi-card>
+        <app-kpi-card label="Avg confidence" [value]="kpis()!.avgConfidence.value | number:'1.0-0'" unit="%" [deltaPercent]="kpis()!.avgConfidence.deltaPercent" [deltaDirection]="kpis()!.avgConfidence.deltaDirection" [sparklineData]="kpis()!.avgConfidence.sparkline" [status]="kpis()!.avgConfidence.value >= 85 ? 'success' : 'warning'"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <section class="chart-grid" aria-label="Workload optimization charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Savings by opportunity type</ion-card-title></ion-card-header>
+          <ion-card-content>
+            @if (oppSeries().length > 0) {
+              <apx-chart [series]="oppSeries()" [chart]="oppChart" [labels]="oppLabels()" [colors]="oppColors" [plotOptions]="oppPlotOptions" [legend]="oppLegend" [dataLabels]="oppDataLabels" [tooltip]="oppTooltip"></apx-chart>
+            } @else {
+              <app-empty-state icon="bulb-outline" title="No opportunities" description="No optimization opportunities detected."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Projected vs. realized savings</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="trendSeries()" [chart]="trendChart" [xaxis]="trendXAxis()" [yaxis]="trendYAxis" [plotOptions]="trendPlotOptions" [colors]="trendColors" [tooltip]="trendTooltip" [dataLabels]="trendDataLabels" [legend]="trendLegend" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Top optimization opportunities</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (resourceRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="resourceRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Top workload optimization opportunities"></ag-grid-angular>
+          } @else {
+            <app-empty-state icon="checkmark-circle-outline" title="All optimized" description="No workload optimization opportunities currently detected."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

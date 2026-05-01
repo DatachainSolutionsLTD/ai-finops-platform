@@ -1,0 +1,34 @@
+// FinOps Platform Design System v1.1 — Updated v2
+// Shared library partials now imported via global styles.scss:
+//   @use 'styles/page-container'  — :host, .page-container, .header-actions
+//   @use 'styles/list-chrome'     — .summary-row, .filter-toolbar, .grid-card, .bulk-action-bar
+//   @use 'styles/ag-grid-cells'   — all ::ng-deep cell renderer styles
+//   @use 'styles/modals'          — .modal-shell, .action-footer
+// Only screen-specific overrides remain below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+.grid-content{ padding: var(--finops-space-4) 0 0 0; }
+
+:host ::ng-deep {
+  .domain-chip { display: inline-flex; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); background-color: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary); }
+  .sla-approaching{ font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-warning-dark); }
+  .no-cost { font-size: var(--finops-text-xs); color: var(--finops-info); font-style: italic; }
+  .risk-badge { display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.risk-low    { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.risk-medium { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.risk-high   { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+  }
+}
+
+ion-modal.reject-modal { --width: 480px; --height: auto; --max-height: 90vh; --border-radius: var(--finops-radius-lg); @media (max-width: 576px) { --width: 100%; } }
+.modal-shell   { padding: var(--finops-space-6); background-color: var(--finops-bg-surface); display: flex; flex-direction: column; gap: var(--finops-space-5); }
+.modal-header  { display: flex; align-items: center; justify-content: space-between; }
+.modal-title   { font-family: var(--finops-font-family); font-size: var(--finops-text-xl); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0; }
+.reject-form   { display: flex; flex-direction: column; gap: var(--finops-space-5); }
+.form-field    { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.field-label   { font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); color: var(--finops-text-primary); }
+.required-mark { color: var(--finops-danger); margin-left: var(--finops-space-1); }
+.field-hint    { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); margin: 0; }
+.field-error   { font-size: var(--finops-text-xs); color: var(--finops-danger); margin: 0; }
+.input-error   { --border-color: var(--finops-danger); }
+.modal-footer  { display: flex; justify-content: flex-end; gap: var(--finops-space-3); padding-top: var(--finops-space-4); border-top: 1px solid var(--finops-border-default); }

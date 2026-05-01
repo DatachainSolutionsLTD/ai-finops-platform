@@ -1,0 +1,202 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard pattern: PageHeader+TimeRange → KPI row → Narrative → 2×2 charts → pipeline grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- ── PageHeader with TimeRangeSelector ─────────────────────────────── -->
+    <app-page-header
+      title="Metering Engine"
+      [subtitle]="subtitle()">
+      <app-time-range-selector
+        slot="actions"
+        [value]="timeRange()"
+        [options]="timeRangeOptions"
+        (valueChange)="onTimeRangeChange($event)">
+      </app-time-range-selector>
+    </app-page-header>
+
+    <!-- ── Loading ──────────────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading metering data..."></app-loading-state>
+    }
+
+    <!-- ── Error ────────────────────────────────────────────────────────── -->
+    @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load metering data"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    }
+
+    <!-- ── Loaded content ───────────────────────────────────────────────── -->
+    @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key metering metrics">
+        <app-kpi-card
+          label="Events processed (24h)"
+          [value]="kpis()!.eventsProcessed24h.value | number"
+          [deltaPercent]="kpis()!.eventsProcessed24h.deltaPercent"
+          [deltaDirection]="kpis()!.eventsProcessed24h.deltaDirection"
+          [sparklineData]="kpis()!.eventsProcessed24h.sparkline"
+          status="neutral">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Events pending"
+          [value]="kpis()!.eventsPending.value | number"
+          [deltaPercent]="kpis()!.eventsPending.deltaPercent"
+          [deltaDirection]="kpis()!.eventsPending.deltaDirection"
+          [sparklineData]="kpis()!.eventsPending.sparkline"
+          [status]="kpis()!.eventsPending.value > 5000 ? 'warning' : 'neutral'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Processing lag"
+          [value]="kpis()!.processingLagSec.value | number:'1.1-1'"
+          unit="s"
+          [deltaPercent]="kpis()!.processingLagSec.deltaPercent"
+          [deltaDirection]="kpis()!.processingLagSec.deltaDirection"
+          [sparklineData]="kpis()!.processingLagSec.sparkline"
+          [status]="kpis()!.processingLagSec.value > 10 ? 'danger' : kpis()!.processingLagSec.value > 5 ? 'warning' : 'success'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Failure rate (24h)"
+          [value]="kpis()!.failureRate24hPct.value | number:'1.2-2'"
+          unit="%"
+          [deltaPercent]="kpis()!.failureRate24hPct.deltaPercent"
+          [deltaDirection]="kpis()!.failureRate24hPct.deltaDirection"
+          [sparklineData]="kpis()!.failureRate24hPct.sparkline"
+          [status]="kpis()!.failureRate24hPct.value > 0.5 ? 'danger' : kpis()!.failureRate24hPct.value > 0.2 ? 'warning' : 'success'">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative block -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block
+          [summary]="n.summary"
+          [highlights]="n.highlights"
+          [agentName]="n.agentName"
+          [generatedAt]="n.generatedAt">
+        </app-narrative-block>
+      }
+
+      <!-- 2×2 Chart grid -->
+      <section class="chart-grid" aria-label="Metering charts">
+
+        <!-- Throughput over time -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Event throughput over time</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="throughputSeries()"
+              [chart]="throughputChart"
+              [xaxis]="throughputXAxis()"
+              [yaxis]="throughputYAxis"
+              [stroke]="throughputStroke"
+              [fill]="throughputFill"
+              [colors]="throughputColors"
+              [tooltip]="throughputTooltip"
+              [dataLabels]="chartDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Queue depth over time -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Queue depth over time</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="queueSeries()"
+              [chart]="queueChart"
+              [xaxis]="queueXAxis()"
+              [yaxis]="queueYAxis"
+              [stroke]="queueStroke"
+              [colors]="queueColors"
+              [tooltip]="queueTooltip"
+              [dataLabels]="chartDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Pipeline status donut -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Pipeline status distribution</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (pipelineSeries().some(v => v > 0)) {
+              <apx-chart
+                [series]="pipelineSeries()"
+                [chart]="pipelineChart"
+                [labels]="pipelineLabels"
+                [colors]="pipelineColors"
+                [legend]="pipelineLegend"
+                [plotOptions]="pipelinePlotOptions"
+                [dataLabels]="chartDataLabels">
+              </apx-chart>
+            } @else {
+              <app-empty-state icon="pie-chart-outline" title="No pipeline data" description="No pipeline status data available."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Pipeline error rates -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Error rate by pipeline</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="failureSeries()"
+              [chart]="failureChart"
+              [xaxis]="failureXAxis()"
+              [yaxis]="failureYAxis"
+              [plotOptions]="failurePlotOptions"
+              [colors]="failureColors"
+              [tooltip]="failureTooltip"
+              [dataLabels]="chartDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+      <!-- Pipeline health drill-down grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title>Pipeline health detail</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (pipelineRows().length > 0) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="pipelineRows()"
+              [columnDefs]="pipelineColDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="false"
+              [animateRows]="true"
+              aria-label="Pipeline health table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="git-network-outline" title="No pipeline data" description="No pipeline metrics available for this time range."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+
+  </div>
+</ion-content>

@@ -1,0 +1,281 @@
+{
+  "__comment": "Grafana Dashboard — Agent-Level Operational Health (Seed)",
+  "title": "FinOps Seed — Agent Operations",
+  "uid": "finops-seed-agent-ops",
+  "tags": ["finops", "seed", "agents", "operations"],
+  "schemaVersion": 39,
+  "style": "dark",
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "agent",
+        "type": "custom",
+        "current": { "text": "All", "value": "$__all" },
+        "options": [
+          { "text": "All", "value": "$__all", "selected": true },
+          { "text": "A01 Ingestion", "value": "A01" },
+          { "text": "A02 Normalization", "value": "A02" },
+          { "text": "A03 Allocation", "value": "A03" },
+          { "text": "A04 Reporting", "value": "A04" },
+          { "text": "A05 Anomaly", "value": "A05" },
+          { "text": "A27 Orchestrator", "value": "A27" }
+        ],
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Pipeline Health (A27 Orchestrator)", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false
+    },
+    {
+      "title": "End-to-End Pipeline Runs (24h)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "targets": [{ "expr": "sum(increase(finops_pipeline_runs_total{tenant=\"g42-seed\"}[24h]))" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0 }] } } }
+    },
+    {
+      "title": "Pipeline Success Rate",
+      "type": "gauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "targets": [{ "expr": "sum(rate(finops_pipeline_runs_total{status=\"Completed\"}[24h])) / sum(rate(finops_pipeline_runs_total[24h])) * 100" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 80 }, { "color": "green", "value": 95 }] } } }
+    },
+    {
+      "title": "Avg Pipeline Duration",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "targets": [{ "expr": "avg(finops_pipeline_duration_seconds{tenant=\"g42-seed\"})" }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "title": "Agent Health Map",
+      "type": "state-timeline",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        { "expr": "finops_agent_health_status{agent=~\"$agent\"}", "legendFormat": "{{agent}}" }
+      ],
+      "fieldConfig": { "defaults": { "mappings": [{ "type": "value", "options": { "1": { "text": "Healthy", "color": "green" }, "0": { "text": "Unhealthy", "color": "red" } } }] } }
+    },
+
+    {
+      "title": "A01 — Data Ingestion Agent", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "collapsed": false
+    },
+    {
+      "title": "Ingestion Runs (24h)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 6 },
+      "targets": [{ "expr": "sum(increase(finops_a01_ingestion_runs_total[24h]))" }]
+    },
+    {
+      "title": "Records Ingested (24h)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 6 },
+      "targets": [{ "expr": "sum(increase(finops_a01_records_ingested_total[24h]))" }],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "title": "Data Freshness (hours)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 6 },
+      "targets": [{ "expr": "(time() - max(finops_a01_last_success_timestamp)) / 3600" }],
+      "fieldConfig": { "defaults": { "unit": "h", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 12 }, { "color": "red", "value": 24 }] } } }
+    },
+    {
+      "title": "Quality Score",
+      "type": "gauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 6 },
+      "targets": [{ "expr": "finops_a01_quality_score{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 85 }, { "color": "green", "value": 95 }] } } }
+    },
+    {
+      "title": "Connector Health",
+      "type": "bargauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 6 },
+      "targets": [{ "expr": "finops_a01_connector_status{tenant=\"g42-seed\"}", "legendFormat": "{{connector_name}} ({{status}})" }]
+    },
+
+    {
+      "title": "A02 — Cost Normalization Agent", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 }, "collapsed": false
+    },
+    {
+      "title": "FOCUS Compliance Score",
+      "type": "gauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 11 },
+      "targets": [{ "expr": "finops_a02_focus_compliance_score{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 95 }, { "color": "green", "value": 99 }] } } }
+    },
+    {
+      "title": "Normalization Throughput",
+      "type": "timeseries",
+      "datasource": "prometheus",
+      "gridPos": { "h": 6, "w": 8, "x": 4, "y": 11 },
+      "targets": [{ "expr": "rate(finops_a02_records_normalized_total[5m])", "legendFormat": "records/sec" }]
+    },
+    {
+      "title": "Reconciliation Variance %",
+      "type": "timeseries",
+      "datasource": "prometheus",
+      "gridPos": { "h": 6, "w": 8, "x": 12, "y": 11 },
+      "targets": [{ "expr": "finops_a02_reconciliation_variance_pct{tenant=\"g42-seed\"}", "legendFormat": "variance %" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.1 }, { "color": "red", "value": 1.0 }] } } }
+    },
+    {
+      "title": "Taxonomy Coverage %",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 11 },
+      "targets": [{ "expr": "finops_a02_taxonomy_coverage_pct" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 90 }, { "color": "green", "value": 95 }] } } }
+    },
+
+    {
+      "title": "A03 — Allocation Agent", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 }, "collapsed": false
+    },
+    {
+      "title": "Allocation Coverage %",
+      "type": "gauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 18 },
+      "targets": [{ "expr": "finops_a03_coverage_rate_pct{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 85 }] } } }
+    },
+    {
+      "title": "Active Rules",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 18 },
+      "targets": [{ "expr": "finops_a03_active_rules{tenant=\"g42-seed\"}" }]
+    },
+    {
+      "title": "Unattributed Cost (SAR)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 18 },
+      "targets": [{ "expr": "finops_a03_unattributed_cost_sar{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "currencySAR", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10000 }, { "color": "red", "value": 50000 }] } } }
+    },
+
+    {
+      "title": "A04 — Reporting Agent", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 }, "collapsed": false
+    },
+    {
+      "title": "Reports Generated (24h)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 23 },
+      "targets": [{ "expr": "sum(increase(finops_a04_reports_generated_total[24h]))" }]
+    },
+    {
+      "title": "Avg Generation Time (s)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 23 },
+      "targets": [{ "expr": "avg(finops_a04_report_generation_duration_seconds)" }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "title": "NL Queries Today",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 23 },
+      "targets": [{ "expr": "sum(increase(finops_a04_nl_queries_total[24h]))" }]
+    },
+    {
+      "title": "Report Consumption Rate %",
+      "type": "gauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 23 },
+      "targets": [{ "expr": "finops_a04_report_consumption_rate_pct" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+    },
+
+    {
+      "title": "A05 — Anomaly Detection Agent", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }, "collapsed": false
+    },
+    {
+      "title": "Active Anomalies",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 28 },
+      "targets": [{ "expr": "finops_a05_active_anomalies_total{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 15 }] } } }
+    },
+    {
+      "title": "Critical Anomalies",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 28 },
+      "targets": [{ "expr": "finops_a05_active_anomalies_total{severity=\"Critical\"}" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } }
+    },
+    {
+      "title": "MTTD (hours)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 28 },
+      "targets": [{ "expr": "finops_a05_mttd_hours{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "h", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "red", "value": 12 }] } } }
+    },
+    {
+      "title": "MTTR (hours)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 28 },
+      "targets": [{ "expr": "finops_a05_mttr_hours{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "h" } }
+    },
+    {
+      "title": "False Positive Rate %",
+      "type": "gauge",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 28 },
+      "targets": [{ "expr": "finops_a05_false_positive_rate_pct{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 15 }, { "color": "red", "value": 30 }] } } }
+    },
+    {
+      "title": "Confirmed Savings (SAR)",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 28 },
+      "targets": [{ "expr": "finops_a05_confirmed_savings_sar_total{tenant=\"g42-seed\"}" }],
+      "fieldConfig": { "defaults": { "unit": "currencySAR", "color": { "mode": "fixed", "fixedColor": "green" } } }
+    },
+    {
+      "title": "Anomaly Trend by Severity",
+      "type": "timeseries",
+      "datasource": "prometheus",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 32 },
+      "targets": [
+        { "expr": "sum(finops_a05_anomalies_detected_total{severity=\"Critical\"}) by (severity)", "legendFormat": "Critical" },
+        { "expr": "sum(finops_a05_anomalies_detected_total{severity=\"Warning\"}) by (severity)", "legendFormat": "Warning" },
+        { "expr": "sum(finops_a05_anomalies_detected_total{severity=\"Informational\"}) by (severity)", "legendFormat": "Info" }
+      ],
+      "fieldConfig": { "overrides": [
+        { "matcher": { "id": "byName", "options": "Critical" }, "properties": [{ "id": "color", "value": { "fixedColor": "#EF4444" } }] },
+        { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "#F59E0B" } }] },
+        { "matcher": { "id": "byName", "options": "Info" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3B82F6" } }] }
+      ] }
+    }
+  ]
+}

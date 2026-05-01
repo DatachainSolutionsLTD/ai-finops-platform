@@ -1,0 +1,293 @@
+// =============================================================================
+// FinOps Platform Design System v1.1
+// Consolidated Design Tokens — Single Source of Truth
+// =============================================================================
+//
+// Color values pulled from ColorPalette.xlsx:
+//   T/B-1 Light + T/B-1 Dark (neutral greyscale)
+//   T/B-2 Light + T/B-2 Dark (warm beige + tan)
+//   Accent 1 (olive) · 2 (slate) · 3 (teal) · 4 (purple) · 5 (forest) · 6 (brick)
+//
+// Companion documents:
+//   - 01_Design_Tokens_Specification.md  (human-readable spec)
+//   - 02_Component_Pattern_Library.md    (screen patterns)
+//   - 03_UI_Generation_Contract.md       (generation rules)
+// =============================================================================
+
+:root {
+
+  // ── BRAND COLORS ───────────────────────────────────────────────────────────
+  --finops-brand-primary:    #3E6264;  // Dark Teal    (Accent 3 base)
+  --finops-brand-secondary:  #423EAF;  // Royal Purple (Accent 4 base)
+  --finops-brand-tertiary:   #45462C;  // Dark Olive   (Accent 1 base)
+
+  --finops-brand-primary-hover:   #2F494A;
+  --finops-brand-secondary-hover: #312F84;
+  --finops-brand-tertiary-hover:  #333421;
+
+  --finops-brand-primary-dark:    #1F3132;
+  --finops-brand-secondary-dark:  #201F58;
+  --finops-brand-tertiary-dark:   #222316;
+
+  --finops-brand-primary-subtle:   #D3E3E4;
+  --finops-brand-secondary-subtle: #D8D7F0;
+  --finops-brand-tertiary-subtle:  #DFE0CD;
+
+  // ── SEMANTIC STATUS (RAG) ──────────────────────────────────────────────────
+  --finops-success:  #3E6340;  // Forest Green (Accent 5 base)
+  --finops-warning:  #C78E49;  // Burnt Ochre  (T/B-2 Dark 25% darker)
+  --finops-danger:   #95443E;  // Brick Red    (Accent 6 base)
+  --finops-info:     #30455D;  // Slate Navy   (Accent 2 base)
+
+  --finops-success-hover:  #2F4A30;
+  --finops-warning-hover:  #8A602B;
+  --finops-danger-hover:   #70332E;
+  --finops-info-hover:     #2F494A;
+
+  --finops-success-dark:   #1F3220;
+  --finops-warning-dark:   #5C4019;
+  --finops-danger-dark:    #49221F;
+  --finops-info-dark:      #17222F;
+
+  --finops-success-subtle: #D8E8D9;
+  --finops-warning-subtle: #F8F1E9;
+  --finops-danger-subtle:  #EDD6D3;
+  --finops-info-subtle:    #CED9E6;
+
+  // ── NEUTRAL PALETTE (Light Theme — default) ────────────────────────────────
+  --finops-bg-page:     #FFFFFF;  // Pure white page (T/B-1 Light base)
+  --finops-bg-surface:  #FFFFFF;  // Card/panel background
+  --finops-bg-subtle:   #F2F2F2;  // Hover states (T/B-1 Light 5% darker)
+  --finops-bg-muted:    #E8E6E5;  // Warm beige surfaces (T/B-2 Light base)
+  --finops-bg-accent:   #F8F1E9;  // Narrative blocks (T/B-2 Dark 80% lighter)
+
+  --finops-text-primary:    #262626;  // Body text (near-black per instructions)
+  --finops-text-secondary:  #404040;  // Secondary labels
+  --finops-text-tertiary:   #595959;  // Captions, hints
+  --finops-text-disabled:   #808080;  // Disabled text
+  --finops-text-inverse:    #FFFFFF;
+
+  --finops-border-default:  #D9D9D9;
+  --finops-border-strong:   #BFBFBF;
+  --finops-border-subtle:   #F2F2F2;
+
+  // ── TYPOGRAPHY ─────────────────────────────────────────────────────────────
+  --finops-font-family: 'IBM Plex Sans Condensed', 'IBM Plex Sans',
+                        'Arial Narrow', Arial, sans-serif;
+  --finops-font-mono:   'IBM Plex Mono', 'Courier New', monospace;
+
+  --finops-text-xs:    0.75rem;
+  --finops-text-sm:    0.875rem;
+  --finops-text-base:  1rem;
+  --finops-text-lg:    1.125rem;
+  --finops-text-xl:    1.25rem;
+  --finops-text-2xl:   1.5rem;
+  --finops-text-3xl:   1.875rem;
+
+  --finops-font-normal:    400;
+  --finops-font-medium:    500;
+  --finops-font-semibold:  600;
+  --finops-font-bold:      700;
+
+  --finops-leading-tight:   1.25;
+  --finops-leading-normal:  1.5;
+  --finops-leading-relaxed: 1.75;
+
+  // ── SPACING (4px base grid) ────────────────────────────────────────────────
+  --finops-space-1:   0.25rem;
+  --finops-space-2:   0.5rem;
+  --finops-space-3:   0.75rem;
+  --finops-space-4:   1rem;
+  --finops-space-5:   1.25rem;
+  --finops-space-6:   1.5rem;
+  --finops-space-8:   2rem;
+  --finops-space-10:  2.5rem;
+  --finops-space-12:  3rem;
+  --finops-space-16:  4rem;
+
+  // ── RADII ──────────────────────────────────────────────────────────────────
+  --finops-radius-none:  0;
+  --finops-radius-sm:    0.25rem;
+  --finops-radius-md:    0.5rem;
+  --finops-radius-lg:    0.75rem;
+  --finops-radius-full:  9999px;
+
+  // ── SHADOWS ────────────────────────────────────────────────────────────────
+  --finops-shadow-none:  none;
+  --finops-shadow-sm:    0 1px 2px rgba(38, 38, 38, 0.04);
+  --finops-shadow-md:    0 2px 8px rgba(38, 38, 38, 0.06);
+  --finops-shadow-lg:    0 8px 24px rgba(38, 38, 38, 0.08);
+  --finops-shadow-xl:    0 16px 48px rgba(38, 38, 38, 0.10);
+
+  --finops-focus-ring: 0 0 0 2px var(--finops-brand-primary);
+
+  // ── MOTION ─────────────────────────────────────────────────────────────────
+  --finops-duration-fast:    150ms;
+  --finops-duration-normal:  250ms;
+  --finops-duration-slow:    400ms;
+
+  --finops-easing-standard:   cubic-bezier(0.4, 0, 0.2, 1);
+  --finops-easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --finops-easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  --finops-transition-default: all var(--finops-duration-fast) var(--finops-easing-standard);
+
+  // ── BREAKPOINTS ────────────────────────────────────────────────────────────
+  --finops-bp-sm:  576px;
+  --finops-bp-md:  768px;
+  --finops-bp-lg:  992px;
+  --finops-bp-xl:  1200px;
+
+  // ── LAYOUT ─────────────────────────────────────────────────────────────────
+  --finops-content-max-width:    1440px;
+  --finops-sidenav-width:        260px;
+  --finops-topbar-height:        56px;
+  --finops-page-padding-mobile:  var(--finops-space-6);
+  --finops-page-padding-desktop: var(--finops-space-8);
+
+  // ── Z-INDEX ────────────────────────────────────────────────────────────────
+  --finops-z-dropdown: 100;
+  --finops-z-sticky:   200;
+  --finops-z-fixed:    300;
+  --finops-z-modal-bg: 400;
+  --finops-z-modal:    500;
+  --finops-z-popover:  600;
+  --finops-z-tooltip:  700;
+  --finops-z-toast:    800;
+
+  // ── IONIC TOKEN BRIDGE ─────────────────────────────────────────────────────
+  --ion-color-primary:               var(--finops-brand-primary);
+  --ion-color-primary-rgb:           62, 98, 100;
+  --ion-color-primary-contrast:      var(--finops-text-inverse);
+  --ion-color-primary-contrast-rgb:  255, 255, 255;
+  --ion-color-primary-shade:         var(--finops-brand-primary-hover);
+  --ion-color-primary-tint:          #54787A;
+
+  --ion-color-secondary:               var(--finops-brand-secondary);
+  --ion-color-secondary-rgb:           66, 62, 175;
+  --ion-color-secondary-contrast:      var(--finops-text-inverse);
+  --ion-color-secondary-contrast-rgb:  255, 255, 255;
+  --ion-color-secondary-shade:         var(--finops-brand-secondary-hover);
+  --ion-color-secondary-tint:          #5A55BB;
+
+  --ion-color-tertiary:               var(--finops-brand-tertiary);
+  --ion-color-tertiary-rgb:           69, 70, 44;
+  --ion-color-tertiary-contrast:      var(--finops-text-inverse);
+  --ion-color-tertiary-contrast-rgb:  255, 255, 255;
+  --ion-color-tertiary-shade:         var(--finops-brand-tertiary-hover);
+  --ion-color-tertiary-tint:          #5B5C42;
+
+  --ion-color-success:               var(--finops-success);
+  --ion-color-success-rgb:           62, 99, 64;
+  --ion-color-success-contrast:      var(--finops-text-inverse);
+  --ion-color-success-contrast-rgb:  255, 255, 255;
+  --ion-color-success-shade:         var(--finops-success-hover);
+  --ion-color-success-tint:          #547957;
+
+  --ion-color-warning:               var(--finops-warning);
+  --ion-color-warning-rgb:           199, 142, 73;
+  --ion-color-warning-contrast:      var(--finops-text-inverse);
+  --ion-color-warning-contrast-rgb:  255, 255, 255;
+  --ion-color-warning-shade:         var(--finops-warning-hover);
+  --ion-color-warning-tint:          #CD995B;
+
+  --ion-color-danger:               var(--finops-danger);
+  --ion-color-danger-rgb:           149, 68, 62;
+  --ion-color-danger-contrast:      var(--finops-text-inverse);
+  --ion-color-danger-contrast-rgb:  255, 255, 255;
+  --ion-color-danger-shade:         var(--finops-danger-hover);
+  --ion-color-danger-tint:          #A05751;
+
+  --ion-color-medium:      var(--finops-text-tertiary);
+  --ion-color-medium-rgb:  89, 89, 89;
+  --ion-color-light:       var(--finops-bg-subtle);
+  --ion-color-light-rgb:   242, 242, 242;
+  --ion-color-light-shade: var(--finops-border-default);
+  --ion-color-light-tint:  var(--finops-bg-surface);
+
+  --ion-background-color:     var(--finops-bg-page);
+  --ion-background-color-rgb: 255, 255, 255;
+  --ion-text-color:           var(--finops-text-primary);
+  --ion-text-color-rgb:       38, 38, 38;
+
+  --ion-font-family: var(--finops-font-family);
+
+  --ion-toolbar-background: var(--finops-bg-surface);
+  --ion-toolbar-color:      var(--finops-text-primary);
+  --ion-item-background:    var(--finops-bg-surface);
+  --ion-item-border-color:  var(--finops-border-default);
+}
+
+
+// =============================================================================
+// GLOBAL BASELINE
+// =============================================================================
+
+html, body {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-base);
+  line-height: var(--finops-leading-normal);
+  color: var(--finops-text-primary);
+  background-color: var(--finops-bg-page);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--finops-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--finops-radius-sm);
+}
+
+
+// =============================================================================
+// AG GRID QUARTZ THEME MAPPING
+// =============================================================================
+
+.ag-theme-quartz {
+  --ag-background-color:              var(--finops-bg-surface);
+  --ag-header-background-color:       var(--finops-bg-subtle);
+  --ag-odd-row-background-color:      var(--finops-bg-surface);
+  --ag-even-row-background-color:     var(--finops-bg-page);
+  --ag-row-hover-color:               var(--finops-brand-primary-subtle);
+  --ag-selected-row-background-color: rgba(62, 98, 100, 0.12);
+  --ag-border-color:                  var(--finops-border-default);
+  --ag-row-border-color:              var(--finops-border-default);
+  --ag-header-foreground-color:       var(--finops-text-secondary);
+  --ag-foreground-color:              var(--finops-text-primary);
+  --ag-font-family:                   var(--finops-font-family);
+  --ag-font-size:                     14px;
+  --ag-header-height:                 44px;
+  --ag-row-height:                    40px;
+  --ag-border-radius:                 var(--finops-radius-md);
+}
+
+
+// =============================================================================
+// NAVIGATION — active menu item
+// =============================================================================
+
+ion-menu ion-item.active-item {
+  --color: var(--finops-brand-primary);
+  --background: var(--finops-brand-primary-subtle);
+  font-weight: var(--finops-font-semibold);
+}
+
+
+// =============================================================================
+// UTILITY CLASSES
+// =============================================================================
+
+.finops-text-primary    { color: var(--finops-text-primary); }
+.finops-text-secondary  { color: var(--finops-text-secondary); }
+.finops-text-tertiary   { color: var(--finops-text-tertiary); }
+
+.finops-bg-surface  { background-color: var(--finops-bg-surface); }
+.finops-bg-subtle   { background-color: var(--finops-bg-subtle); }
+.finops-bg-muted    { background-color: var(--finops-bg-muted); }
+
+.finops-card {
+  background-color: var(--finops-bg-surface);
+  border-radius: var(--finops-radius-lg);
+  padding: var(--finops-space-6);
+  box-shadow: var(--finops-shadow-md);
+  border: 1px solid var(--finops-border-default);
+}

@@ -1,0 +1,364 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Detail/Edit pattern: PageHeader+meta → identity block → tab nav → form → sticky footer -->
+
+<ion-content class="detail-content">
+  <div class="page-container">
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading tenant..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load tenant" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData() && tenant(); as t) {
+
+      <!-- PageHeader with meta chips and danger action -->
+      <app-page-header
+        [title]="t.displayName"
+        [subtitle]="'Tenant · ' + t.tenantCode">
+        <div slot="meta" class="meta-chips">
+          @for (chip of metaChips(); track chip.label) {
+            <ion-chip class="meta-chip meta-chip-{{ chip.variant }}" aria-label="{{ chip.label }}">
+              <ion-label>{{ chip.label }}</ion-label>
+            </ion-chip>
+          }
+        </div>
+        <div slot="actions" class="header-actions">
+          @if (canSuspend() && t.status !== 'Suspended') {
+            <ion-button fill="outline" color="danger" (click)="suspendTenant()" aria-label="Suspend this tenant">
+              <ion-icon name="pause-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+              Suspend
+            </ion-button>
+          }
+        </div>
+      </app-page-header>
+
+      <!-- KPI stat strip (read-only) -->
+      <section class="stat-strip" aria-label="Tenant at a glance">
+        <div class="stat-item">
+          <span class="stat-label">Spend this month</span>
+          <span class="stat-value">{{ spendDisplay() }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Users</span>
+          <span class="stat-value">{{ t.userCount | number }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Active connectors</span>
+          <span class="stat-value">{{ t.activeConnectors | number }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Critical alerts</span>
+          <span class="stat-value" [class.stat-value-danger]="t.criticalAlerts > 0">{{ t.criticalAlerts }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Subscription renews</span>
+          <span class="stat-value">{{ t.subscriptionRenewsAt ? (t.subscriptionRenewsAt | date:'d MMM y') : '—' }}</span>
+        </div>
+      </section>
+
+      <!-- Identity block (read-only) -->
+      <section class="identity-block" aria-label="Tenant identity">
+        <dl class="identity-grid">
+          <div><dt>Tenant ID</dt><dd class="mono">{{ t.tenantId }}</dd></div>
+          <div><dt>Tenant code</dt><dd class="mono">{{ t.tenantCode }}</dd></div>
+          <div><dt>Data residency</dt><dd>{{ t.dataResidencyRegion }}</dd></div>
+          <div><dt>Onboarded</dt><dd>{{ t.onboardedAt | date:'d MMM y' }}</dd></div>
+        </dl>
+      </section>
+
+      <!-- Tab navigation -->
+      <nav class="tab-nav" role="tablist" aria-label="Tenant detail sections">
+        @for (tab of tabs; track tab.id) {
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === tab.id"
+            role="tab"
+            [id]="'tab-' + tab.id"
+            [attr.aria-selected]="activeTab() === tab.id"
+            [attr.aria-controls]="'panel-' + tab.id"
+            (click)="selectTab(tab.id)">
+            <ion-icon [name]="tab.icon" aria-hidden="true"></ion-icon>
+            <span>{{ tab.label }}</span>
+            @if (tabHasErrors(tab.id)) {
+              <span class="tab-error-dot" aria-label="Section has errors"></span>
+            }
+          </button>
+        }
+      </nav>
+
+      <!-- Form card -->
+      <form [formGroup]="form" class="detail-form" novalidate>
+        <ion-card class="form-card">
+          <ion-card-content>
+
+            <!-- ── Overview tab ────────────────────────────────────── -->
+            @if (activeTab() === 'overview') {
+              <div class="form-section" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+                <h3 class="section-heading">Tenant profile</h3>
+                <div class="form-grid">
+
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="td-display-name">
+                      Display name <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-display-name" formControlName="displayName"
+                      [class.input-error]="fieldError('displayName')">
+                    </ion-input>
+                    @if (fieldError('displayName'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="td-legal-name">
+                      Legal name <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-legal-name" formControlName="legalName"
+                      [class.input-error]="fieldError('legalName')">
+                    </ion-input>
+                    @if (fieldError('legalName'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-industry">Industry</label>
+                    <ion-input id="td-industry" formControlName="industry"></ion-input>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-currency">
+                      Primary currency <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-currency" formControlName="primaryCurrencyCode"
+                      placeholder="AED" maxlength="3">
+                    </ion-input>
+                    <p class="field-hint">ISO 4217 currency code. All tenant costs are displayed in this currency.</p>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-status">
+                      Status <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-status" formControlName="status" interface="popover">
+                      @for (s of statusOptions; track s) {
+                        <ion-select-option [value]="s">{{ s }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-tier">
+                      Tier <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-tier" formControlName="tierCode" interface="popover">
+                      @for (tier of tierOptions; track tier) {
+                        <ion-select-option [value]="tier">{{ tier }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-billing-status">
+                      Billing status <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-billing-status" formControlName="billingStatus" interface="popover">
+                      @for (b of billingStatusOptions; track b) {
+                        <ion-select-option [value]="b">{{ b.replace('_', ' ') }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-residency">
+                      Data residency region <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-residency" formControlName="dataResidencyRegion" interface="popover">
+                      @for (r of dataResidencyOptions; track r) {
+                        <ion-select-option [value]="r">{{ r }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-renews">Subscription renews</label>
+                    <ion-input id="td-renews" type="date" formControlName="subscriptionRenewsAt"></ion-input>
+                  </div>
+
+                </div>
+              </div>
+            }
+
+            <!-- ── Contact tab ─────────────────────────────────────── -->
+            @if (activeTab() === 'contact') {
+              <div class="form-section" role="tabpanel" id="panel-contact" aria-labelledby="tab-contact">
+                <h3 class="section-heading">Contact information</h3>
+                <div class="form-grid">
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-billing-email">
+                      Billing email <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-billing-email" type="email" formControlName="billingContactEmail"
+                      [class.input-error]="fieldError('billingContactEmail')">
+                    </ion-input>
+                    @if (fieldError('billingContactEmail'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-billing-phone">Billing phone</label>
+                    <ion-input id="td-billing-phone" type="tel" formControlName="billingContactPhone"></ion-input>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-tech-email">
+                      Technical contact email <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-tech-email" type="email" formControlName="technicalContactEmail"
+                      [class.input-error]="fieldError('technicalContactEmail')">
+                    </ion-input>
+                    @if (fieldError('technicalContactEmail'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-tech-phone">Technical contact phone</label>
+                    <ion-input id="td-tech-phone" type="tel" formControlName="technicalContactPhone"></ion-input>
+                  </div>
+
+                </div>
+              </div>
+            }
+
+            <!-- ── Quotas tab ──────────────────────────────────────── -->
+            @if (activeTab() === 'quotas') {
+              <div class="form-section" role="tabpanel" id="panel-quotas" aria-labelledby="tab-quotas">
+                <h3 class="section-heading">Resource quotas</h3>
+                <p class="section-hint">
+                  Current usage: {{ t.userCount | number }} users · {{ t.activeConnectors | number }} connectors
+                </p>
+                <div class="form-grid">
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-max-users">
+                      Max users <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-max-users" type="number" formControlName="maxUsers"
+                      [class.input-error]="fieldError('maxUsers')">
+                    </ion-input>
+                    @if (fieldError('maxUsers'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-max-connectors">
+                      Max connectors <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-max-connectors" type="number" formControlName="maxConnectors"
+                      [class.input-error]="fieldError('maxConnectors')">
+                    </ion-input>
+                    @if (fieldError('maxConnectors'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-storage">
+                      Storage quota (GB) <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-storage" type="number" formControlName="storageQuotaGb"
+                      [class.input-error]="fieldError('storageQuotaGb')">
+                    </ion-input>
+                    @if (fieldError('storageQuotaGb'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-fp">
+                      FP quota / month <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-input id="td-fp" type="number" formControlName="fpQuotaMonthly"
+                      [class.input-error]="fieldError('fpQuotaMonthly')">
+                    </ion-input>
+                    <p class="field-hint">Feature Points consumed per month across all agents.</p>
+                    @if (fieldError('fpQuotaMonthly'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+
+                </div>
+              </div>
+            }
+
+            <!-- ── Platform tab ────────────────────────────────────── -->
+            @if (activeTab() === 'platform') {
+              <div class="form-section" role="tabpanel" id="panel-platform" aria-labelledby="tab-platform">
+                <h3 class="section-heading">Platform configuration</h3>
+                <p class="section-hint">These settings override platform defaults for this tenant.</p>
+                <div class="form-grid">
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-autonomy">
+                      Agent autonomy ceiling <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-autonomy" formControlName="agentAutonomyCeiling" interface="popover">
+                      @for (l of autonomyOptions; track l) {
+                        <ion-select-option [value]="l">{{ l }}</ion-select-option>
+                      }
+                    </ion-select>
+                    <p class="field-hint">No agent for this tenant may operate above this level.</p>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-sensitivity">
+                      Anomaly alert sensitivity <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-sensitivity" formControlName="anomalyAlertSensitivity" interface="popover">
+                      @for (s of sensitivityOptions; track s) {
+                        <ion-select-option [value]="s">{{ s }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="field-label" for="td-retention">
+                      Data retention period <span class="required-mark" aria-hidden="true">*</span>
+                    </label>
+                    <ion-select id="td-retention" formControlName="dataRetentionPeriod" interface="popover">
+                      @for (r of retentionOptions; track r) {
+                        <ion-select-option [value]="r">{{ r }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </div>
+
+                  <div class="form-field toggle-field">
+                    <label class="field-label" for="td-auto-remediation">Auto-remediation enabled</label>
+                    <ion-toggle id="td-auto-remediation" formControlName="autoRemediationEnabled"
+                      aria-label="Enable auto-remediation for this tenant">
+                    </ion-toggle>
+                  </div>
+
+                </div>
+              </div>
+            }
+
+          </ion-card-content>
+        </ion-card>
+      </form>
+
+    } <!-- /hasData -->
+  </div>
+
+  <!-- ── Sticky action footer ─────────────────────────────────────────── -->
+  @if (hasData()) {
+    <div class="sticky-footer" [class.dirty]="isDirty()" role="region" aria-label="Save tenant">
+      <span class="footer-status">
+        @if (isDirty()) { Unsaved changes } @else { All changes saved }
+      </span>
+      <div class="footer-actions">
+        <ion-button fill="outline" color="medium" [disabled]="isSaving()" (click)="cancel()">
+          Back to tenants
+        </ion-button>
+        @if (canEdit()) {
+          <ion-button fill="solid" color="primary" [disabled]="!canSave()" (click)="save()">
+            @if (isSaving()) {
+              <ion-spinner name="crescent" aria-label="Saving"></ion-spinner>
+            } @else {
+              Save changes
+            }
+          </ion-button>
+        }
+      </div>
+    </div>
+  }
+
+</ion-content>

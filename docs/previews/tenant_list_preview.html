@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tenant Management · FinOps Design System v1.1 Preview</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.css">
+
+<style>
+:root {
+  --finops-brand-primary: #3E6264;
+  --finops-brand-primary-hover: #2F494A;
+  --finops-brand-primary-dark: #1F3132;
+  --finops-brand-primary-subtle: #D3E3E4;
+  --finops-brand-secondary: #423EAF;
+  --finops-brand-secondary-subtle: #D8D7F0;
+  --finops-brand-secondary-dark: #201F58;
+  --finops-brand-tertiary: #45462C;
+  --finops-brand-tertiary-subtle: #DFE0CD;
+  --finops-success: #3E6340;
+  --finops-success-subtle: #D8E8D9;
+  --finops-success-dark: #1F3220;
+  --finops-warning: #C78E49;
+  --finops-warning-subtle: #F8F1E9;
+  --finops-warning-dark: #5C4019;
+  --finops-danger: #95443E;
+  --finops-danger-subtle: #EDD6D3;
+  --finops-danger-dark: #49221F;
+  --finops-info: #30455D;
+  --finops-info-subtle: #CED9E6;
+  --finops-info-dark: #17222F;
+  --finops-bg-page: #FFFFFF;
+  --finops-bg-surface: #FFFFFF;
+  --finops-bg-subtle: #F2F2F2;
+  --finops-bg-muted: #E8E6E5;
+  --finops-text-primary: #262626;
+  --finops-text-secondary: #404040;
+  --finops-text-tertiary: #595959;
+  --finops-text-disabled: #808080;
+  --finops-text-inverse: #FFFFFF;
+  --finops-border-default: #D9D9D9;
+  --finops-border-strong: #BFBFBF;
+  --finops-border-subtle: #F2F2F2;
+  --finops-font-family: 'IBM Plex Sans Condensed','IBM Plex Sans','Arial Narrow',Arial,sans-serif;
+  --finops-font-mono: 'IBM Plex Mono','Courier New',monospace;
+  --finops-text-xs: 0.75rem;
+  --finops-text-sm: 0.875rem;
+  --finops-text-base: 1rem;
+  --finops-text-lg: 1.125rem;
+  --finops-text-xl: 1.25rem;
+  --finops-text-2xl: 1.5rem;
+  --finops-text-3xl: 1.875rem;
+  --finops-space-1: 0.25rem;
+  --finops-space-2: 0.5rem;
+  --finops-space-3: 0.75rem;
+  --finops-space-4: 1rem;
+  --finops-space-5: 1.25rem;
+  --finops-space-6: 1.5rem;
+  --finops-space-8: 2rem;
+  --finops-radius-sm: 0.25rem;
+  --finops-radius-md: 0.5rem;
+  --finops-radius-lg: 0.75rem;
+  --finops-radius-full: 9999px;
+  --finops-shadow-sm: 0 1px 2px rgba(38,38,38,0.04);
+  --finops-shadow-md: 0 2px 8px rgba(38,38,38,0.06);
+  --finops-topbar-height: 56px;
+  --finops-sidenav-width: 260px;
+}
+
+.ag-theme-quartz {
+  --ag-background-color: var(--finops-bg-surface);
+  --ag-header-background-color: var(--finops-bg-subtle);
+  --ag-row-hover-color: var(--finops-brand-primary-subtle);
+  --ag-selected-row-background-color: rgba(62,98,100,0.12);
+  --ag-border-color: var(--finops-border-default);
+  --ag-row-border-color: var(--finops-border-default);
+  --ag-header-foreground-color: var(--finops-text-secondary);
+  --ag-foreground-color: var(--finops-text-primary);
+  --ag-font-family: var(--finops-font-family);
+  --ag-font-size: 14px;
+  --ag-header-height: 44px;
+  --ag-row-height: 44px;
+  --ag-border-radius: var(--finops-radius-md);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-base);
+  line-height: 1.5;
+  color: var(--finops-text-primary);
+  background-color: var(--finops-bg-page);
+}
+*:focus-visible {
+  outline: 2px solid var(--finops-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--finops-radius-sm);
+}
+
+/* Shell */
+.shell { display: grid; grid-template-columns: var(--finops-sidenav-width) 1fr; grid-template-rows: var(--finops-topbar-height) 1fr; min-height: 100vh; }
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; padding: 0 var(--finops-space-6); background: var(--finops-bg-surface); border-bottom: 1px solid var(--finops-border-default); gap: var(--finops-space-4); }
+.topbar-logo { font-size: var(--finops-text-lg); font-weight: 700; color: var(--finops-brand-primary); letter-spacing: -0.01em; }
+.topbar-tenant { display: flex; align-items: center; gap: var(--finops-space-2); padding: var(--finops-space-2) var(--finops-space-3); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-md); font-size: var(--finops-text-sm); color: var(--finops-text-secondary); background: var(--finops-bg-surface); }
+.topbar-spacer { flex: 1; }
+.topbar-icon-btn { width: 36px; height: 36px; border-radius: var(--finops-radius-md); display: inline-flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; color: var(--finops-text-secondary); position: relative; }
+.topbar-icon-btn:hover { background: var(--finops-bg-subtle); }
+.topbar-icon-btn .badge { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: var(--finops-radius-full); background: var(--finops-danger); color: white; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+
+.sidenav { background: var(--finops-bg-surface); border-right: 1px solid var(--finops-border-default); padding: var(--finops-space-4) 0; overflow-y: auto; }
+.sidenav-section { padding: var(--finops-space-3) var(--finops-space-4) var(--finops-space-1); font-size: var(--finops-text-xs); font-weight: 600; color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
+.sidenav-item { display: flex; align-items: center; gap: var(--finops-space-3); padding: var(--finops-space-3) var(--finops-space-4); font-size: var(--finops-text-sm); color: var(--finops-text-primary); text-decoration: none; cursor: pointer; }
+.sidenav-item:hover { background: var(--finops-bg-subtle); }
+.sidenav-item.active { background: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary); font-weight: 600; }
+.sidenav-item-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+.main { background: var(--finops-bg-page); overflow-y: auto; }
+
+/* Page container */
+.page-container { max-width: 1440px; margin: 0 auto; padding: var(--finops-space-8); }
+@media (max-width: 768px) { .page-container { padding: var(--finops-space-6); } }
+
+/* PageHeader */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); flex-wrap: wrap; }
+.page-header-text h1 { font-size: var(--finops-text-3xl); font-weight: 700; color: var(--finops-text-primary); margin: 0; letter-spacing: -0.01em; }
+.page-header-text .subtitle { font-size: var(--finops-text-sm); color: var(--finops-text-tertiary); margin-top: var(--finops-space-1); }
+.header-actions { display: flex; gap: var(--finops-space-3); }
+
+.btn { padding: var(--finops-space-2) var(--finops-space-4); border-radius: var(--finops-radius-md); border: 1px solid var(--finops-border-strong); background: var(--finops-bg-surface); font-family: var(--finops-font-family); font-size: var(--finops-text-sm); font-weight: 500; color: var(--finops-text-primary); cursor: pointer; display: inline-flex; align-items: center; gap: var(--finops-space-2); height: 40px; }
+.btn:hover { background: var(--finops-bg-subtle); }
+.btn-primary { background: var(--finops-brand-primary); border-color: var(--finops-brand-primary); color: var(--finops-text-inverse); }
+.btn-primary:hover { background: var(--finops-brand-primary-hover); }
+.btn-danger { color: var(--finops-danger); border-color: var(--finops-danger); }
+.btn-warning { color: var(--finops-warning); border-color: var(--finops-warning); }
+.btn svg { width: 16px; height: 16px; }
+
+/* Summary row */
+.summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--finops-space-4); padding: var(--finops-space-5) var(--finops-space-6); background: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); margin-bottom: var(--finops-space-6); }
+.summary-stat { display: flex; flex-direction: column; gap: var(--finops-space-1); }
+.summary-label { font-size: var(--finops-text-xs); font-weight: 500; color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.summary-value { font-size: var(--finops-text-2xl); font-weight: 700; color: var(--finops-text-primary); line-height: 1.1; }
+.summary-value-success { color: var(--finops-success); }
+.summary-value-info { color: var(--finops-info); }
+.summary-value-warning { color: var(--finops-warning); }
+
+/* Filter toolbar */
+.filter-toolbar { display: flex; align-items: center; gap: var(--finops-space-4); margin-bottom: var(--finops-space-4); flex-wrap: wrap; }
+.searchbar-wrap { flex: 1; min-width: 280px; max-width: 420px; }
+.searchbar { display: flex; align-items: center; gap: var(--finops-space-2); padding: 0 var(--finops-space-3); background: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-md); height: 40px; }
+.searchbar input { flex: 1; border: none; background: transparent; outline: none; font-family: var(--finops-font-family); font-size: var(--finops-text-sm); color: var(--finops-text-primary); height: 100%; }
+.searchbar input::placeholder { color: var(--finops-text-tertiary); }
+.searchbar svg { color: var(--finops-text-tertiary); width: 18px; height: 18px; flex-shrink: 0; }
+
+.filter-chips { display: flex; gap: var(--finops-space-2); flex-wrap: wrap; align-items: center; }
+.filter-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: var(--finops-space-2); padding: 0 var(--finops-space-2); border-radius: var(--finops-radius-full); background: var(--finops-brand-primary); color: var(--finops-text-inverse); font-size: var(--finops-text-xs); font-weight: 600; }
+
+/* Active filter chips */
+.active-chips { display: flex; flex-wrap: wrap; gap: var(--finops-space-2); margin-bottom: var(--finops-space-4); }
+.chip { display: inline-flex; align-items: center; gap: var(--finops-space-1); padding: var(--finops-space-1) var(--finops-space-3); background: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary-dark); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: 500; cursor: pointer; border: 1px solid transparent; }
+.chip:hover { border-color: var(--finops-brand-primary); }
+.chip svg { width: 14px; height: 14px; }
+
+/* Bulk action bar */
+.bulk-action-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--finops-space-4); padding: var(--finops-space-3) var(--finops-space-4); background: var(--finops-brand-primary-subtle); border: 1px solid var(--finops-brand-primary); border-radius: var(--finops-radius-md); margin-bottom: var(--finops-space-4); }
+.bulk-count { font-size: var(--finops-text-sm); color: var(--finops-brand-primary-dark); }
+.bulk-count strong { font-weight: 700; font-size: var(--finops-text-base); }
+.bulk-actions { display: flex; gap: var(--finops-space-2); flex-wrap: wrap; }
+
+/* Grid card */
+.grid-card { background: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); overflow: hidden; }
+.tenants-grid { width: 100%; height: 620px; }
+
+/* AG Grid cell customizations */
+.tenant-cell { display: flex; flex-direction: column; justify-content: center; line-height: 1.25; padding: var(--finops-space-1) 0; }
+.tenant-name { font-weight: 600; color: var(--finops-text-primary); font-size: var(--finops-text-sm); }
+.tenant-meta { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); font-family: var(--finops-font-mono); margin-top: 2px; }
+
+.tier-pill { display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-sm); font-size: var(--finops-text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.tier-starter { background: var(--finops-bg-subtle); color: var(--finops-text-secondary); }
+.tier-professional { background: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary-dark); }
+.tier-enterprise { background: var(--finops-brand-secondary-subtle); color: var(--finops-brand-secondary-dark); }
+
+.status-badge { display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: 600; white-space: nowrap; }
+.status-badge.success { background: var(--finops-success-subtle); color: var(--finops-success-dark); }
+.status-badge.warning { background: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+.status-badge.danger  { background: var(--finops-danger-subtle);  color: var(--finops-danger-dark); }
+.status-badge.info    { background: var(--finops-info-subtle);    color: var(--finops-info-dark); }
+.status-badge.neutral { background: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+
+.quota-cell { display: flex; align-items: center; gap: var(--finops-space-2); height: 100%; }
+.quota-bar { flex: 1; height: 6px; background: var(--finops-bg-subtle); border-radius: var(--finops-radius-full); overflow: hidden; min-width: 60px; }
+.quota-fill { height: 100%; border-radius: var(--finops-radius-full); }
+.quota-normal { background: var(--finops-success); }
+.quota-warning { background: var(--finops-warning); }
+.quota-danger { background: var(--finops-danger); }
+.quota-text { font-size: var(--finops-text-xs); font-weight: 600; color: var(--finops-text-secondary); min-width: 36px; text-align: right; }
+
+.critical-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 var(--finops-space-2); border-radius: var(--finops-radius-full); background: var(--finops-danger-subtle); color: var(--finops-danger-dark); font-size: var(--finops-text-xs); font-weight: 600; }
+.critical-zero { color: var(--finops-text-tertiary); font-size: var(--finops-text-sm); }
+
+.row-action-btn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; background: transparent; color: var(--finops-text-tertiary); border-radius: var(--finops-radius-md); cursor: pointer; }
+.row-action-btn:hover { background: var(--finops-bg-subtle); color: var(--finops-brand-primary); border-color: var(--finops-border-default); }
+
+.preview-banner { background: var(--finops-info-subtle); color: var(--finops-info-dark); padding: var(--finops-space-2) var(--finops-space-4); font-size: var(--finops-text-xs); text-align: center; border-bottom: 1px solid var(--finops-info); }
+</style>
+</head>
+<body>
+
+<div class="preview-banner">
+  <strong>DESIGN SYSTEM PREVIEW v1.1</strong> · Tenant Management (List pattern) · Screen 2 of 58 · Opus 4.6 exemplar
+</div>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="topbar-logo">FinOps</div>
+    <div class="topbar-tenant">
+      <span>Platform</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="topbar-icon-btn" aria-label="Notifications">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <span class="badge">3</span>
+    </button>
+    <button class="topbar-icon-btn" aria-label="User menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </button>
+  </header>
+
+  <nav class="sidenav">
+    <div class="sidenav-section">Overview</div>
+    <div class="sidenav-item">My Dashboard</div>
+    <div class="sidenav-item">Executive Summary</div>
+    <div class="sidenav-section">Understand</div>
+    <div class="sidenav-item">Cost Explorer</div>
+    <div class="sidenav-item">Allocations</div>
+    <div class="sidenav-item">Reports</div>
+    <div class="sidenav-section">Platform Admin</div>
+    <div class="sidenav-item">Platform Health</div>
+    <div class="sidenav-item active">
+      <svg class="sidenav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+      Tenant Management
+    </div>
+    <div class="sidenav-item">Agent Configuration</div>
+    <div class="sidenav-item">Metering Engine</div>
+    <div class="sidenav-item">Pricing &amp; Rate Cards</div>
+    <div class="sidenav-item">Platform Settings</div>
+    <div class="sidenav-item">Feature Flags</div>
+  </nav>
+
+  <main class="main">
+    <div class="page-container">
+
+      <!-- PageHeader -->
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Tenant Management</h1>
+          <div class="subtitle">All tenants provisioned on the platform</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+          <button class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add tenant
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary stats -->
+      <section class="summary-row">
+        <div class="summary-stat">
+          <div class="summary-label">Total tenants</div>
+          <div class="summary-value">15</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Active</div>
+          <div class="summary-value summary-value-success">10</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Onboarding</div>
+          <div class="summary-value summary-value-info">2</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Degraded / suspended</div>
+          <div class="summary-value summary-value-warning">2</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">FP this month</div>
+          <div class="summary-value">2.25M</div>
+        </div>
+      </section>
+
+      <!-- Filter toolbar -->
+      <div class="filter-toolbar">
+        <div class="searchbar-wrap">
+          <div class="searchbar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search by name or code..." id="grid-search">
+          </div>
+        </div>
+        <div class="filter-chips">
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Status
+            <span class="filter-count">1</span>
+          </button>
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            Tier
+          </button>
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Region
+          </button>
+          <button class="btn" style="color:var(--finops-brand-primary);border-color:transparent;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Clear all
+          </button>
+        </div>
+      </div>
+
+      <!-- Active filter chips -->
+      <div class="active-chips">
+        <div class="chip">Status: Active
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="var(--finops-brand-primary)"/><line x1="15" y1="9" x2="9" y2="15" stroke="white" stroke-width="2"/><line x1="9" y1="9" x2="15" y2="15" stroke="white" stroke-width="2"/></svg>
+        </div>
+      </div>
+
+      <!-- Bulk action bar (shown when 3 rows are selected) -->
+      <div class="bulk-action-bar">
+        <div class="bulk-count"><strong>3</strong> selected</div>
+        <div class="bulk-actions">
+          <button class="btn btn-warning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+            Suspend
+          </button>
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export selection
+          </button>
+          <button class="btn btn-danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            Archive
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid -->
+      <div class="grid-card">
+        <div id="tenants-grid" class="ag-theme-quartz tenants-grid"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+<script>
+function statusVariant(s){ return {Active:'success',Degraded:'warning',Suspended:'danger',Onboarding:'info',Offboarding:'neutral',Archived:'neutral'}[s] ?? 'neutral'; }
+function billingVariant(s){ return {Current:'success',Trial:'info',Grace_Period:'warning',Overdue:'danger',Pre_Paid:'success'}[s] ?? 'neutral'; }
+function relativeTime(mins){ if(mins<1)return'just now'; if(mins<60)return mins+' min ago'; const h=Math.floor(mins/60); if(h<24)return h+' hr ago'; const d=Math.floor(h/24); return d+' day'+(d===1?'':'s')+' ago'; }
+function daysUntil(days){ if(days===null)return'—'; if(days<0)return Math.abs(days)+' days overdue'; if(days===0)return'today'; if(days===1)return'tomorrow'; if(days<30)return days+' days'; if(days<365)return Math.floor(days/30)+' months'; return Math.floor(days/365)+' years'; }
+function fmtCurrency(v,c){ return new Intl.NumberFormat('en-US',{style:'currency',currency:c,maximumFractionDigits:0,currencyDisplay:'code'}).format(v); }
+function fmtNumber(v){ return new Intl.NumberFormat('en-US').format(v); }
+function quotaTier(p){ return p>=85?'danger':p>=70?'warning':'normal'; }
+
+const rows = [
+  { tenantCode:'DEMO-TENANT', displayName:'Demo Tenant', region:'UAE', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Active', userCount:47, quota:37, spend:48213.50, spendCcy:'AED', critical:0, billing:'Current', lastMins:4, renewDays:218 },
+  { tenantCode:'ACME-CORP', displayName:'Acme Corp', region:'North America', tierCode:'PROFESSIONAL', tierName:'Professional', status:'Active', userCount:22, quota:58, spend:6217.50, spendCcy:'USD', critical:0, billing:'Current', lastMins:12, renewDays:98 },
+  { tenantCode:'GLOBEX', displayName:'Globex Industries', region:'Europe', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Degraded', userCount:63, quota:31, spend:28142.25, spendCcy:'GBP', critical:1, billing:'Current', lastMins:2, renewDays:52 },
+  { tenantCode:'WAYNE', displayName:'Wayne Enterprises', region:'North America', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Active', userCount:84, quota:83, spend:82450.75, spendCcy:'USD', critical:0, billing:'Current', lastMins:1, renewDays:12 },
+  { tenantCode:'STARK', displayName:'Stark Industries', region:'North America', tierCode:'PROFESSIONAL', tierName:'Professional', status:'Active', userCount:18, quota:22, spend:3820.50, spendCcy:'USD', critical:0, billing:'Current', lastMins:18, renewDays:304 },
+  { tenantCode:'UMBRELLA', displayName:'Umbrella Biotech', region:'Europe', tierCode:'STARTER', tierName:'Starter', status:'Onboarding', userCount:3, quota:17, spend:320.00, spendCcy:'EUR', critical:0, billing:'Trial', lastMins:32, renewDays:362 },
+  { tenantCode:'CYBERDYNE', displayName:'Cyberdyne Systems', region:'Asia Pacific', tierCode:'PROFESSIONAL', tierName:'Professional', status:'Active', userCount:15, quota:71, spend:480000, spendCcy:'JPY', critical:1, billing:'Grace_Period', lastMins:6, renewDays:132 },
+  { tenantCode:'INITECH', displayName:'Initech', region:'North America', tierCode:'STARTER', tierName:'Starter', status:'Active', userCount:7, quota:43, spend:380.00, spendCcy:'USD', critical:0, billing:'Current', lastMins:45, renewDays:286 },
+  { tenantCode:'PIED-PIPER', displayName:'Pied Piper', region:'North America', tierCode:'PROFESSIONAL', tierName:'Professional', status:'Active', userCount:11, quota:47, spend:4210.75, spendCcy:'USD', critical:0, billing:'Current', lastMins:8, renewDays:240 },
+  { tenantCode:'HOOLI', displayName:'Hooli', region:'North America', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Active', userCount:72, quota:77, spend:72140.50, spendCcy:'USD', critical:1, billing:'Current', lastMins:3, renewDays:168 },
+  { tenantCode:'DUNDER-MIFFLIN', displayName:'Dunder Mifflin', region:'North America', tierCode:'STARTER', tierName:'Starter', status:'Suspended', userCount:5, quota:0, spend:0, spendCcy:'USD', critical:0, billing:'Overdue', lastMins:1440, renewDays:null },
+  { tenantCode:'MASSIVE-DYN', displayName:'Massive Dynamic', region:'Europe', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Active', userCount:58, quota:60, spend:52180.25, spendCcy:'EUR', critical:0, billing:'Current', lastMins:2, renewDays:4 },
+  { tenantCode:'WONKA', displayName:'Wonka Industries', region:'Europe', tierCode:'PROFESSIONAL', tierName:'Professional', status:'Active', userCount:24, quota:76, spend:7120.00, spendCcy:'GBP', critical:0, billing:'Current', lastMins:15, renewDays:281 },
+  { tenantCode:'VEHEMENT', displayName:'Vehement Capital', region:'Asia Pacific', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Onboarding', userCount:12, quota:2, spend:2180.50, spendCcy:'SGD', critical:0, billing:'Trial', lastMins:22, renewDays:357 },
+  { tenantCode:'OCEANIC', displayName:'Oceanic Airlines', region:'UAE', tierCode:'ENTERPRISE', tierName:'Enterprise', status:'Active', userCount:94, quota:92, spend:124820.75, spendCcy:'AED', critical:2, billing:'Current', lastMins:1, renewDays:78 },
+];
+
+const columnDefs = [
+  { headerCheckboxSelection: true, checkboxSelection: true, width: 48, maxWidth: 48, minWidth: 48, sortable: false, filter: false, resizable: false, pinned: 'left', headerName: '' },
+  { field:'displayName', headerName:'Tenant', minWidth:220, flex:2, pinned:'left',
+    cellRenderer: p => `<div class="tenant-cell"><div class="tenant-name">${p.data.displayName}</div><div class="tenant-meta">${p.data.tenantCode} · ${p.data.region}</div></div>` },
+  { field:'tierName', headerName:'Tier', maxWidth:140,
+    cellRenderer: p => `<span class="tier-pill tier-${p.data.tierCode.toLowerCase()}">${p.value}</span>` },
+  { field:'status', headerName:'Status', maxWidth:140,
+    cellRenderer: p => `<span class="status-badge ${statusVariant(p.value)}">${p.value}</span>` },
+  { field:'userCount', headerName:'Users', type:'numericColumn', maxWidth:100, valueFormatter: p => fmtNumber(p.value) },
+  { field:'quota', headerName:'Quota used', type:'numericColumn', minWidth:170,
+    cellRenderer: p => `<div class="quota-cell"><div class="quota-bar"><div class="quota-fill quota-${quotaTier(p.value)}" style="width:${Math.min(p.value,100)}%"></div></div><div class="quota-text">${p.value}%</div></div>` },
+  { field:'spend', headerName:'Spend (this month)', type:'numericColumn', minWidth:170,
+    valueFormatter: p => fmtCurrency(p.value, p.data.spendCcy) },
+  { field:'critical', headerName:'Critical', type:'numericColumn', maxWidth:110,
+    cellRenderer: p => p.value > 0 ? `<span class="critical-pill">${p.value}</span>` : `<span class="critical-zero">0</span>` },
+  { field:'billing', headerName:'Billing', maxWidth:140,
+    cellRenderer: p => `<span class="status-badge ${billingVariant(p.value)}">${(p.value+'').replace('_',' ')}</span>` },
+  { field:'lastMins', headerName:'Last activity', minWidth:150, valueFormatter: p => relativeTime(p.value) },
+  { field:'renewDays', headerName:'Renews in', minWidth:140, valueFormatter: p => daysUntil(p.value) },
+  { headerName:'', width:60, maxWidth:60, minWidth:60, sortable:false, filter:false, resizable:false, pinned:'right',
+    cellRenderer: () => `<button class="row-action-btn" aria-label="Open tenant details"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>` },
+];
+
+const gridOptions = {
+  columnDefs,
+  rowData: rows,
+  defaultColDef: { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 110 },
+  pagination: true,
+  paginationPageSize: 20,
+  paginationPageSizeSelector: [10, 20, 50, 100],
+  animateRows: true,
+  rowSelection: 'multiple',
+  suppressRowClickSelection: true,
+};
+const gridApi = agGrid.createGrid(document.querySelector('#tenants-grid'), gridOptions);
+
+// Preselect 3 rows to demonstrate the bulk action bar visually
+setTimeout(() => {
+  gridApi.forEachNodeAfterFilterAndSort((node, i) => { if (i < 3) node.setSelected(true); });
+}, 200);
+
+document.getElementById('grid-search').addEventListener('input', e => {
+  gridApi.setGridOption('quickFilterText', e.target.value);
+});
+</script>
+
+</body>
+</html>

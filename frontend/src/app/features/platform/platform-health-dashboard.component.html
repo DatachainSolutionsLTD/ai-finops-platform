@@ -1,0 +1,257 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<!-- Dashboard pattern per 02_Component_Pattern_Library.md §3.1              -->
+<!-- PageHeader → KPI row → Narrative → 2x2 chart grid → AG Grid drill-down -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- ── PageHeader with TimeRangeSelector ───────────────────────────── -->
+    <app-page-header
+      title="Platform Health"
+      [subtitle]="subtitle()">
+      <app-time-range-selector
+        slot="actions"
+        [value]="timeRange()"
+        [options]="['24h', '7d', '30d', '90d', 'QTD', 'YTD']"
+        (valueChange)="onTimeRangeChange($event)">
+      </app-time-range-selector>
+    </app-page-header>
+
+    <!-- ── Loading state ────────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <app-loading-state
+        variant="spinner"
+        message="Loading platform health snapshot...">
+      </app-loading-state>
+    }
+
+    <!-- ── Error state ──────────────────────────────────────────────────── -->
+    @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load platform health"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    }
+
+    <!-- ── Loaded content ───────────────────────────────────────────────── -->
+    @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key platform metrics">
+        <app-kpi-card
+          label="Active tenants"
+          [value]="kpis()!.activeTenants.value | number"
+          [deltaPercent]="kpis()!.activeTenants.deltaPercent"
+          [deltaDirection]="kpis()!.activeTenants.deltaDirection"
+          [sparklineData]="kpis()!.activeTenants.sparkline ?? []"
+          status="success">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="FP processed today"
+          [value]="kpis()!.fpProcessedToday.value | number"
+          unit="FP"
+          [deltaPercent]="kpis()!.fpProcessedToday.deltaPercent"
+          [deltaDirection]="kpis()!.fpProcessedToday.deltaDirection"
+          [sparklineData]="kpis()!.fpProcessedToday.sparkline ?? []"
+          status="neutral">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Platform SLO"
+          [value]="kpis()!.platformSloPercent.value | number:'1.2-2'"
+          unit="%"
+          [deltaPercent]="kpis()!.platformSloPercent.deltaPercent"
+          [deltaDirection]="kpis()!.platformSloPercent.deltaDirection"
+          [sparklineData]="kpis()!.platformSloPercent.sparkline ?? []"
+          status="success">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Critical alerts open"
+          [value]="kpis()!.criticalAlertsOpen.value"
+          [deltaPercent]="kpis()!.criticalAlertsOpen.deltaPercent"
+          [deltaDirection]="kpis()!.criticalAlertsOpen.deltaDirection"
+          [sparklineData]="kpis()!.criticalAlertsOpen.sparkline ?? []"
+          [status]="kpis()!.criticalAlertsOpen.value > 0 ? 'danger' : 'success'">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative Block -->
+      @if (narrative(); as n) {
+        <app-narrative-block
+          [content]="n.content"
+          [sourceAgent]="n.sourceAgentCode + ' ' + n.sourceAgentName"
+          [expandable]="true">
+        </app-narrative-block>
+      }
+
+      <!-- Chart Grid 2x2 -->
+      <section class="chart-grid" aria-label="Platform trends and breakdowns">
+
+        <!-- Chart 1: FP Trend (area) -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>FP usage trend</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (fpTrend().length === 0) {
+              <app-empty-state
+                icon="bar-chart-outline"
+                title="No trend data"
+                description="No FP throughput recorded in the selected range.">
+              </app-empty-state>
+            } @else {
+              <apx-chart
+                [series]="fpTrendSeries()"
+                [chart]="fpTrendChart"
+                [xaxis]="fpTrendXaxis()"
+                [yaxis]="fpTrendYaxis"
+                [stroke]="fpTrendStroke"
+                [fill]="fpTrendFill"
+                [tooltip]="fpTrendTooltip"
+                [colors]="fpTrendColors">
+              </apx-chart>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Chart 2: Agent Category (bar) -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>FP by agent category</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (agentCategoryBreakdown().length === 0) {
+              <app-empty-state
+                icon="bar-chart-outline"
+                title="No category data"
+                description="No agent activity recorded in the selected range.">
+              </app-empty-state>
+            } @else {
+              <apx-chart
+                [series]="agentCategorySeries()"
+                [chart]="agentCategoryChart"
+                [xaxis]="agentCategoryXaxis()"
+                [plotOptions]="agentCategoryPlotOptions"
+                [dataLabels]="agentCategoryDataLabels"
+                [legend]="agentCategoryLegend"
+                [colors]="agentCategoryColors">
+              </apx-chart>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Chart 3: Tenant Tier Distribution (donut) -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Tenants by tier</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (tierDistribution().length === 0) {
+              <app-empty-state
+                icon="pie-chart-outline"
+                title="No tenants"
+                description="No active tenants on the platform.">
+              </app-empty-state>
+            } @else {
+              <apx-chart
+                [series]="tierSeries()"
+                [labels]="tierLabels()"
+                [chart]="tierChart"
+                [colors]="tierColors"
+                [legend]="tierLegend">
+              </apx-chart>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Chart 4: Platform SLO (radial) -->
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Platform SLO</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="sloSeries()"
+              [labels]="sloLabels"
+              [chart]="sloChart"
+              [plotOptions]="sloPlotOptions"
+              [colors]="sloColors">
+            </apx-chart>
+            @if (slo(); as s) {
+              <dl class="slo-breakdown">
+                <div><dt>Ingestion</dt><dd>{{ s.ingestionPercent | number:'1.2-2' }}%</dd></div>
+                <div><dt>API</dt><dd>{{ s.apiPercent | number:'1.2-2' }}%</dd></div>
+                <div><dt>Agent execution</dt><dd>{{ s.agentExecutionPercent | number:'1.2-2' }}%</dd></div>
+                <div><dt>Target</dt><dd>{{ s.targetPercent | number:'1.2-2' }}%</dd></div>
+              </dl>
+            }
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+      <!-- Active Tenants Grid -->
+      <ion-card class="tenants-card">
+        <ion-card-header>
+          <ion-card-title>Active tenants</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+
+          <ion-toolbar class="grid-toolbar">
+            <ion-searchbar
+              slot="start"
+              placeholder="Search tenants..."
+              debounce="300"
+              animated="true"
+              [value]="searchText()"
+              (ionInput)="onSearchChange($any($event.detail.value))"
+              aria-label="Search active tenants">
+            </ion-searchbar>
+
+            <ion-button
+              slot="end"
+              fill="outline"
+              color="medium"
+              (click)="exportTenantsCsv()"
+              aria-label="Export tenant list as CSV">
+              <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+              Export CSV
+            </ion-button>
+          </ion-toolbar>
+
+          @if (tenants().length === 0) {
+            <app-empty-state
+              icon="people-outline"
+              title="No active tenants"
+              description="The platform has no tenants in the selected time range.">
+            </app-empty-state>
+          } @else {
+            <ag-grid-angular
+              class="ag-theme-quartz tenants-grid"
+              [rowData]="tenants()"
+              [columnDefs]="tenantColDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10, 20, 50, 100]"
+              [quickFilterText]="searchText()"
+              [animateRows]="true"
+              rowSelection="single"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)">
+            </ag-grid-angular>
+          }
+
+        </ion-card-content>
+      </ion-card>
+
+    }
+  </div>
+</ion-content>

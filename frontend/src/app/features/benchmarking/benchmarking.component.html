@@ -1,0 +1,96 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader+TimeRange → KPIs → Narrative → 2-col charts → benchmark grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Benchmarking" [subtitle]="subtitle()">
+      <app-time-range-selector slot="actions" [value]="timeRange()" [options]="timeRangeOptions" (valueChange)="onTimeRangeChange($event)"></app-time-range-selector>
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading benchmarking data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load benchmarks" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key benchmarking metrics">
+        <app-kpi-card
+          label="Above-benchmark dimensions"
+          [value]="kpis()!.aboveBenchmarkDimensions.value | number"
+          [deltaPercent]="kpis()!.aboveBenchmarkDimensions.deltaPercent"
+          [deltaDirection]="kpis()!.aboveBenchmarkDimensions.deltaDirection"
+          [sparklineData]="kpis()!.aboveBenchmarkDimensions.sparkline"
+          [status]="kpis()!.aboveBenchmarkDimensions.value > 0 ? 'warning' : 'success'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Avg deviation from benchmark"
+          [value]="kpis()!.avgDeviationPct.value | number:'1.1-1'"
+          unit="%"
+          [deltaPercent]="kpis()!.avgDeviationPct.deltaPercent"
+          [deltaDirection]="kpis()!.avgDeviationPct.deltaDirection"
+          [sparklineData]="kpis()!.avgDeviationPct.sparkline"
+          [status]="kpis()!.avgDeviationPct.value > 25 ? 'danger' : kpis()!.avgDeviationPct.value > 10 ? 'warning' : 'success'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Optimization opportunity"
+          [value]="kpis()!.optimizationOpportunity.value | number:'1.0-0'"
+          [unit]="kpis()!.optimizationOpportunity.currency"
+          [deltaPercent]="kpis()!.optimizationOpportunity.deltaPercent"
+          [deltaDirection]="kpis()!.optimizationOpportunity.deltaDirection"
+          [sparklineData]="kpis()!.optimizationOpportunity.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Improvement velocity"
+          [value]="kpis()!.improvementVelocity.value | number:'1.1-1'"
+          unit="% / mo"
+          [deltaPercent]="kpis()!.improvementVelocity.deltaPercent"
+          [deltaDirection]="kpis()!.improvementVelocity.deltaDirection"
+          [sparklineData]="kpis()!.improvementVelocity.sparkline"
+          status="success">
+        </app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block>
+      }
+
+      <section class="chart-grid" aria-label="Benchmarking charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Efficiency ratios — actual vs. benchmark</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="ratioSeries()" [chart]="ratioChart" [xaxis]="ratioXAxis()" [yaxis]="ratioYAxis" [plotOptions]="ratioPlotOptions" [colors]="ratioColors" [tooltip]="ratioTooltip" [dataLabels]="ratioDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Average benchmark deviation trend</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="trendSeries()" [chart]="trendChart" [xaxis]="trendXAxis()" [yaxis]="trendYAxis" [stroke]="trendStroke" [colors]="trendColors" [tooltip]="trendTooltip" [dataLabels]="trendDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Above-benchmark dimensions</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (benchmarkRows().length > 0) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="benchmarkRows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="false"
+              [animateRows]="true"
+              aria-label="Above-benchmark dimensions table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="trending-down-outline" title="All dimensions within benchmark" description="No above-benchmark deviations detected for the selected period."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

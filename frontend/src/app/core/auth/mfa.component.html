@@ -1,0 +1,77 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<app-auth-layout
+  title="Verify your identity"
+  [subtitle]="'Enter the 6-digit code from ' + methodLabel() + '.'">
+
+  @if (errorMessage(); as err) {
+    <div class="auth-banner banner-danger" role="alert">
+      <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+      <span>{{ err }}</span>
+    </div>
+  }
+
+  @if (hasExpired()) {
+    <div class="auth-banner banner-warning" role="status">
+      <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+      <span>Your verification code has expired. Please sign in again to get a new code.</span>
+    </div>
+  }
+
+  @if (!hasExpired()) {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+
+      <div class="form-field code-field">
+        <label for="mfaCode" class="sr-only">Verification code</label>
+        <ion-input
+          id="mfaCode"
+          type="text"
+          formControlName="code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="000000"
+          fill="outline"
+          class="code-input"
+          [class.invalid]="fieldError('code')"
+          (ionInput)="onCodeInput($any($event.detail.value))">
+        </ion-input>
+        @if (fieldError('code'); as err) {
+          <div class="field-error">{{ err }}</div>
+        }
+
+        <div class="code-hint">
+          <div class="timer" [class.timer-warning]="secondsRemaining() < 60">
+            <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+            <span>Code expires in {{ formattedTimer() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <ion-button
+        type="submit"
+        expand="block"
+        color="primary"
+        [disabled]="!canSubmit()">
+        @if (isSubmitting()) {
+          <ion-spinner name="dots" slot="start"></ion-spinner>
+          Verifying...
+        } @else {
+          Verify and continue
+          <ion-icon name="arrow-forward-outline" slot="end" aria-hidden="true"></ion-icon>
+        }
+      </ion-button>
+
+    </form>
+  }
+
+  <div class="auth-actions">
+    <button type="button" class="link-button" (click)="startOver()">
+      <ion-icon name="arrow-back-outline" aria-hidden="true"></ion-icon>
+      Back to sign in
+    </button>
+  </div>
+
+</app-auth-layout>

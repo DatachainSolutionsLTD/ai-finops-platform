@@ -1,0 +1,47 @@
+<!-- FinOps Platform Design System v1.1 — Network Optimizer Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Network Optimizer" [subtitle]="subtitle()"></app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading network data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key network optimization metrics">
+        <app-kpi-card label="Total transfer cost" [value]="kpis()!.totalTransferCost.value | number:'1.0-0'" [unit]="kpis()!.totalTransferCost.currency" [deltaPercent]="kpis()!.totalTransferCost.deltaPercent" [deltaDirection]="kpis()!.totalTransferCost.deltaDirection" [sparklineData]="kpis()!.totalTransferCost.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Internet egress cost" [value]="kpis()!.egressCost.value | number:'1.0-0'" [unit]="kpis()!.egressCost.currency" [deltaPercent]="kpis()!.egressCost.deltaPercent" [deltaDirection]="kpis()!.egressCost.deltaDirection" [sparklineData]="kpis()!.egressCost.sparkline" [status]="kpis()!.egressCost.deltaDirection === 'up' ? 'warning' : 'success'"></app-kpi-card>
+        <app-kpi-card label="Optimization opportunity" [value]="kpis()!.optimizationOpp.value | number:'1.0-0'" [unit]="kpis()!.optimizationOpp.currency" [deltaPercent]="kpis()!.optimizationOpp.deltaPercent" [deltaDirection]="kpis()!.optimizationOpp.deltaDirection" [sparklineData]="kpis()!.optimizationOpp.sparkline" status="neutral"></app-kpi-card>
+        <app-kpi-card label="Active anomalies" [value]="kpis()!.activeAnomalies.value | number" [deltaPercent]="kpis()!.activeAnomalies.deltaPercent" [deltaDirection]="kpis()!.activeAnomalies.deltaDirection" [sparklineData]="kpis()!.activeAnomalies.sparkline" [status]="kpis()!.activeAnomalies.value > 0 ? 'danger' : 'success'"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <section class="chart-grid" aria-label="Network cost charts">
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Cost by transfer type</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="typeSeries()" [chart]="typeChart" [xaxis]="typeXAxis()" [yaxis]="typeYAxis" [plotOptions]="typePlotOptions" [colors]="typeColors" [tooltip]="typeTooltip" [dataLabels]="typeDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Total transfer cost trend</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="trendSeries()" [chart]="trendChart" [xaxis]="trendXAxis()" [yaxis]="trendYAxis" [stroke]="trendStroke" [colors]="trendColors" [tooltip]="trendTooltip" [dataLabels]="trendDataLabels" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <ion-card class="grid-card">
+        <ion-card-header><ion-card-title>Network optimization recommendations</ion-card-title></ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (recRows().length > 0) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="recRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="Network recommendations table"></ag-grid-angular>
+          } @else {
+            <app-empty-state icon="wifi-outline" title="No network recommendations" description="Network costs are well-optimised."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

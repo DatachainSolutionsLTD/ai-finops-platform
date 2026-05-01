@@ -1,0 +1,175 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader+controls → KPIs → Narrative → forecast area → budget bar → early warning grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Forecasts" [subtitle]="subtitle()">
+      <div slot="actions" class="header-controls">
+        <div class="control-group">
+          <label class="control-label" for="fc-horizon">Horizon</label>
+          <ion-select id="fc-horizon" [value]="horizon()" (ionChange)="horizon.set($any($event.detail.value))" interface="popover" aria-label="Select forecast horizon">
+            @for (h of horizonOptions; track h) { <ion-select-option [value]="h">{{ h }}</ion-select-option> }
+          </ion-select>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="fc-dimension">View by</label>
+          <ion-select id="fc-dimension" [value]="dimension()" (ionChange)="dimension.set($any($event.detail.value))" interface="popover" aria-label="Select dimension">
+            @for (d of dimensionOptions; track d.value) { <ion-select-option [value]="d.value">{{ d.label }}</ion-select-option> }
+          </ion-select>
+        </div>
+      </div>
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading forecast data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load forecasts" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key forecast metrics">
+        <app-kpi-card
+          label="Forecasted spend"
+          [value]="kpis()!.forecastedSpend.value | number:'1.0-0'"
+          [unit]="kpis()!.forecastedSpend.currency"
+          [deltaPercent]="kpis()!.forecastedSpend.deltaPercent"
+          [deltaDirection]="kpis()!.forecastedSpend.deltaDirection"
+          [sparklineData]="kpis()!.forecastedSpend.sparkline"
+          status="neutral">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Forecast accuracy"
+          [value]="kpis()!.forecastAccuracy.value | number:'1.1-1'"
+          unit="%"
+          [deltaPercent]="kpis()!.forecastAccuracy.deltaPercent"
+          [deltaDirection]="kpis()!.forecastAccuracy.deltaDirection"
+          [sparklineData]="kpis()!.forecastAccuracy.sparkline"
+          [status]="kpis()!.forecastAccuracy.value >= 90 ? 'success' : 'warning'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Early warnings"
+          [value]="kpis()!.earlyWarnings.value | number"
+          [deltaPercent]="kpis()!.earlyWarnings.deltaPercent"
+          [deltaDirection]="kpis()!.earlyWarnings.deltaDirection"
+          [sparklineData]="kpis()!.earlyWarnings.sparkline"
+          [status]="kpis()!.earlyWarnings.value > 0 ? 'warning' : 'success'">
+        </app-kpi-card>
+        <app-kpi-card
+          label="Days to first breach"
+          [value]="kpis()!.budgetExhaustion.value | number"
+          unit="d"
+          [deltaPercent]="kpis()!.budgetExhaustion.deltaPercent"
+          [deltaDirection]="kpis()!.budgetExhaustion.deltaDirection"
+          [sparklineData]="kpis()!.budgetExhaustion.sparkline"
+          [status]="kpis()!.budgetExhaustion.value < 14 ? 'danger' : kpis()!.budgetExhaustion.value < 21 ? 'warning' : 'success'">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block>
+      }
+
+      <!-- Full-width forecast trend -->
+      <ion-card class="chart-card chart-card-full">
+        <ion-card-header>
+          <ion-card-title>Forecast vs. actual — with confidence bands</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <apx-chart
+            [series]="trendSeries()"
+            [chart]="trendChart"
+            [xaxis]="trendXAxis()"
+            [yaxis]="trendYAxis"
+            [stroke]="trendStroke"
+            [fill]="trendFill"
+            [colors]="trendColors"
+            [tooltip]="trendTooltip"
+            [dataLabels]="trendDataLabels"
+            [legend]="trendLegend"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2-col: budget vs forecast bar -->
+      <section class="chart-grid" aria-label="Forecast detail charts">
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Forecast vs. budget by {{ dimension() | titlecase }}</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="budgetSeries()"
+              [chart]="budgetChart"
+              [xaxis]="budgetXAxis()"
+              [yaxis]="budgetYAxis"
+              [plotOptions]="budgetPlotOptions"
+              [colors]="budgetColors"
+              [tooltip]="budgetTooltip"
+              [dataLabels]="budgetDataLabels"
+              [legend]="budgetLegend"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Early warning summary card (right column) -->
+        <ion-card class="chart-card warn-summary-card">
+          <ion-card-header>
+            <ion-card-title>Active early warnings</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (warnRows().length > 0) {
+              <div class="warn-list" role="list" aria-label="Early warning list">
+                @for (w of warnRows(); track w.warningId) {
+                  <div class="warn-item" role="listitem">
+                    <span class="warn-dot warn-dot-{{ w.severity.toLowerCase() }}" aria-label="{{ w.severity }} severity"></span>
+                    <div class="warn-info">
+                      <span class="warn-dim">{{ w.dimension }}</span>
+                      <span class="warn-meta">{{ w.dimensionType }} · +{{ w.variancePct.toFixed(1) }}% over budget</span>
+                    </div>
+                    <span class="warn-date">
+                      @if (w.exhaustionDate) {
+                        {{ w.exhaustionDate | date:'d MMM' }}
+                      } @else {
+                        Within budget
+                      }
+                    </span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <app-empty-state icon="checkmark-circle-outline" title="No active warnings" description="All forecasts are within budget thresholds."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+      <!-- Early warning detail grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title>Early warning detail</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (warnRows().length > 0) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="warnRows()"
+              [columnDefs]="warnColDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="false"
+              [animateRows]="true"
+              aria-label="Early warning table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="shield-checkmark-outline" title="No early warnings" description="All tracked dimensions are within budget thresholds."></app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

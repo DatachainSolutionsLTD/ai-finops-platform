@@ -1,0 +1,334 @@
+# =============================================================================
+# Vault Mount Structure & Policy Definitions — Seed Round
+# Scope:  Single-tenant (G42), Agents A01–A05 + A27, AWS credentials
+# Vault:  Single-node, AWS KMS auto-unseal
+# Auth:   Kubernetes service account tokens (Secret-Zero pattern)
+# =============================================================================
+# Mount Hierarchy:
+#   secret/tenants/{tenant_id}/cloud/{provider}    — cloud API credentials
+#   secret/tenants/{tenant_id}/enterprise/{system}  — ERP/ITSM/CMDB creds
+#   secret/tenants/{tenant_id}/config               — tenant runtime config
+#   secret/agents/{agent_type}/signing_key           — agent identity keys
+#   secret/platform/                                 — platform-wide secrets
+#   transit/                                         — encryption-as-a-service
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# 1. SECRET ENGINE MOUNTS
+# ---------------------------------------------------------------------------
+
+vault_mounts:
+
+  # --- Tenant-scoped secrets (one mount per tenant at Angel+) ---
+  - path: secret/tenants/g42-seed/
+    type: kv-v2
+    description: "G42 anchor tenant — cloud credentials, enterprise system creds, config"
+    max_versions: 10
+    cas_required: false
+
+  # --- Agent identity secrets (shared across tenants) ---
+  - path: secret/agents/
+    type: kv-v2
+    description: "Agent signing keys and identity certificates"
+    max_versions: 5
+
+  # --- Platform-wide secrets ---
+  - path: secret/platform/
+    type: kv-v2
+    description: "Platform infrastructure secrets — DB passwords, API keys, LLM tokens"
+    max_versions: 5
+
+  # --- Transit engine for field-level encryption ---
+  - path: transit/
+    type: transit
+    description: "Encryption-as-a-service for PII field encryption and audit hash chains"
+
+
+# ---------------------------------------------------------------------------
+# 2. SECRET KEY STRUCTURE — Tenant: G42
+# ---------------------------------------------------------------------------
+
+secret_keys:
+
+  # Cloud provider credentials (Seed: AWS only)
+  - path: secret/tenants/g42-seed/cloud/aws
+    fields:
+      access_key_id:       "AWS IAM access key (read-only CUR/Cost Explorer)"
+      secret_access_key:   "AWS IAM secret key"
+      role_arn:            "IAM role ARN for STS AssumeRole"
+      external_id:         "STS external ID for cross-account trust"
+      region:              "Primary region (me-south-1)"
+      cur_s3_bucket:       "S3 bucket containing CUR exports"
+      cur_s3_prefix:       "S3 prefix for CUR reports"
+    ttl: 3600              # 1 hour credential rotation
+    rotation_schedule: "0 */6 * * *"  # Rotate every 6 hours
+
+  # Enterprise system credentials (Seed: read-only)
+  - path: secret/tenants/g42-seed/enterprise/servicenow
+    fields:
+      instance_url:        "ServiceNow instance URL"
+      username:            "API integration user"
+      password:            "API integration password"
+      api_scope:           "CMDB read-only scope"
+    ttl: 3600
+
+  - path: secret/tenants/g42-seed/enterprise/sap
+    fields:
+      rfc_host:            "SAP RFC connection host"
+      system_number:       "SAP system number"
+      client:              "SAP client ID"
+      username:            "RFC user"
+      password:            "RFC password"
+      function_modules:    "Allowed function modules (comma-separated)"
+    ttl: 3600
+
+  # Tenant runtime configuration
+  - path: secret/tenants/g42-seed/config
+    fields:
+      db_connection_string: "PostgreSQL connection string (tenant-scoped)"
+      redis_url:            "Redis endpoint URL"
+      s3_staging_prefix:    "s3://finops-seed-raw-staging-me-south-1/tenants/g42-seed/"
+      s3_cold_prefix:       "s3://finops-seed-cold-storage-me-south-1/tenants/g42-seed/"
+      ingestion_schedule:   "Default cron: 0 2,14 * * *"
+      base_currency:        "SAR"
+
+  # Agent signing keys (per agent type — not tenant-scoped)
+  - path: secret/agents/A01/signing_key
+    fields:
+      private_key_pem:     "RSA-2048 private key for non-repudiation signatures"
+      public_key_pem:      "RSA-2048 public key (published to Agent Identity Registry)"
+      key_id:              "Key identifier for rotation tracking"
+    rotation_schedule: "0 0 1 * *"  # Monthly rotation
+
+  - path: secret/agents/A02/signing_key
+    fields: { private_key_pem: "", public_key_pem: "", key_id: "" }
+
+  - path: secret/agents/A03/signing_key
+    fields: { private_key_pem: "", public_key_pem: "", key_id: "" }
+
+  - path: secret/agents/A04/signing_key
+    fields: { private_key_pem: "", public_key_pem: "", key_id: "" }
+
+  - path: secret/agents/A05/signing_key
+    fields: { private_key_pem: "", public_key_pem: "", key_id: "" }
+
+  - path: secret/agents/A27/signing_key
+    fields: { private_key_pem: "", public_key_pem: "", key_id: "" }
+
+  # Platform secrets
+  - path: secret/platform/database
+    fields:
+      master_username:     "finops_admin"
+      master_password:     "PostgreSQL master password"
+      rds_endpoint:        "RDS primary endpoint"
+      rds_replica_endpoint: "RDS read replica endpoint"
+
+  - path: secret/platform/redis
+    fields:
+      primary_endpoint:    "ElastiCache primary endpoint"
+      auth_token:          "Redis AUTH token"
+
+  - path: secret/platform/anthropic
+    fields:
+      api_key:             "Anthropic Claude API key for A04/A05 NL summaries"
+      model_id:            "claude-sonnet-4-20250514"
+
+  - path: secret/platform/airflow
+    fields:
+      fernet_key:          "Airflow Fernet encryption key"
+      webserver_secret:    "Airflow webserver secret key"
+
+
+# ---------------------------------------------------------------------------
+# 3. TRANSIT ENCRYPTION KEYS
+# ---------------------------------------------------------------------------
+
+transit_keys:
+
+  - name: audit-hash-chain
+    type: aes256-gcm96
+    description: "SHA256 hash chain key for immutable audit log integrity"
+    exportable: false
+    allow_plaintext_backup: false
+
+  - name: pii-field-encryption
+    type: aes256-gcm96
+    description: "Field-level encryption for PII data (email, IP addresses)"
+    exportable: false
+    min_decryption_version: 1
+
+
+# ---------------------------------------------------------------------------
+# 4. VAULT POLICIES — Agent-scoped Access
+# ---------------------------------------------------------------------------
+
+policies:
+
+  # A01: Data Ingestion Agent — needs cloud creds and enterprise system creds
+  - name: agent-a01
+    rules: |
+      # Read cloud provider credentials for all tenants in scope
+      path "secret/data/tenants/*/cloud/*" {
+        capabilities = ["read"]
+      }
+      # Read enterprise system credentials
+      path "secret/data/tenants/*/enterprise/*" {
+        capabilities = ["read"]
+      }
+      # Read tenant runtime config
+      path "secret/data/tenants/*/config" {
+        capabilities = ["read"]
+      }
+      # Read own signing key
+      path "secret/data/agents/A01/signing_key" {
+        capabilities = ["read"]
+      }
+      # Transit: sign audit entries
+      path "transit/sign/audit-hash-chain" {
+        capabilities = ["update"]
+      }
+      # Transit: encrypt PII fields
+      path "transit/encrypt/pii-field-encryption" {
+        capabilities = ["update"]
+      }
+
+  # A02: Cost Normalization Agent — reads tenant config only (no cloud creds)
+  - name: agent-a02
+    rules: |
+      path "secret/data/tenants/*/config" {
+        capabilities = ["read"]
+      }
+      path "secret/data/agents/A02/signing_key" {
+        capabilities = ["read"]
+      }
+      path "transit/sign/audit-hash-chain" {
+        capabilities = ["update"]
+      }
+
+  # A03: Allocation Agent — reads tenant config
+  - name: agent-a03
+    rules: |
+      path "secret/data/tenants/*/config" {
+        capabilities = ["read"]
+      }
+      path "secret/data/agents/A03/signing_key" {
+        capabilities = ["read"]
+      }
+      path "transit/sign/audit-hash-chain" {
+        capabilities = ["update"]
+      }
+
+  # A04: Reporting & Analytics Agent — reads tenant config + LLM API key
+  - name: agent-a04
+    rules: |
+      path "secret/data/tenants/*/config" {
+        capabilities = ["read"]
+      }
+      path "secret/data/platform/anthropic" {
+        capabilities = ["read"]
+      }
+      path "secret/data/agents/A04/signing_key" {
+        capabilities = ["read"]
+      }
+      path "transit/sign/audit-hash-chain" {
+        capabilities = ["update"]
+      }
+
+  # A05: Anomaly Detection Agent — reads tenant config + LLM API key
+  - name: agent-a05
+    rules: |
+      path "secret/data/tenants/*/config" {
+        capabilities = ["read"]
+      }
+      path "secret/data/platform/anthropic" {
+        capabilities = ["read"]
+      }
+      path "secret/data/agents/A05/signing_key" {
+        capabilities = ["read"]
+      }
+      path "transit/sign/audit-hash-chain" {
+        capabilities = ["update"]
+      }
+
+  # A27: Orchestrator Agent — broadest read access, no write to secrets
+  - name: agent-a27
+    rules: |
+      path "secret/data/tenants/*/config" {
+        capabilities = ["read"]
+      }
+      path "secret/data/agents/A27/signing_key" {
+        capabilities = ["read"]
+      }
+      path "transit/sign/audit-hash-chain" {
+        capabilities = ["update"]
+      }
+
+  # Platform admin — full access for CI/CD and operations
+  - name: platform-admin
+    rules: |
+      path "secret/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+      }
+      path "transit/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+      }
+      path "sys/*" {
+        capabilities = ["read", "list"]
+      }
+      path "auth/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+      }
+
+
+# ---------------------------------------------------------------------------
+# 5. KUBERNETES AUTH METHOD — Service Account → Vault Role Mapping
+# ---------------------------------------------------------------------------
+
+kubernetes_auth:
+  mount_path: auth/kubernetes
+  config:
+    kubernetes_host: "https://kubernetes.default.svc"
+    # Injected from EKS cluster CA and token reviewer SA
+
+  roles:
+    - name: agent-a01
+      bound_service_account_names: ["agent-a01-sa"]
+      bound_service_account_namespaces: ["tenant-*"]
+      policies: ["agent-a01"]
+      ttl: 15m
+      max_ttl: 1h
+
+    - name: agent-a02
+      bound_service_account_names: ["agent-a02-sa"]
+      bound_service_account_namespaces: ["tenant-*"]
+      policies: ["agent-a02"]
+      ttl: 15m
+      max_ttl: 1h
+
+    - name: agent-a03
+      bound_service_account_names: ["agent-a03-sa"]
+      bound_service_account_namespaces: ["tenant-*"]
+      policies: ["agent-a03"]
+      ttl: 15m
+      max_ttl: 1h
+
+    - name: agent-a04
+      bound_service_account_names: ["agent-a04-sa"]
+      bound_service_account_namespaces: ["tenant-*"]
+      policies: ["agent-a04"]
+      ttl: 15m
+      max_ttl: 1h
+
+    - name: agent-a05
+      bound_service_account_names: ["agent-a05-sa"]
+      bound_service_account_namespaces: ["tenant-*"]
+      policies: ["agent-a05"]
+      ttl: 15m
+      max_ttl: 1h
+
+    - name: agent-a27
+      bound_service_account_names: ["agent-a27-sa"]
+      bound_service_account_namespaces: ["tenant-*"]
+      policies: ["agent-a27"]
+      ttl: 15m
+      max_ttl: 1h

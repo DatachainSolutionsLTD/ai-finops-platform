@@ -1,0 +1,385 @@
+# =============================================================================
+# Redis Key-Space Design & Pub/Sub Topic Configuration
+# Scope:  Seed Round — Agents A01–A05 + A27 Skeleton
+# Redis:  ElastiCache r6g.large (Single + Sentinel for HA)
+# =============================================================================
+# Namespace Convention:
+#   finops:{tenant_id}:{domain}:{key}
+#
+# All keys include tenant_id for future Redis Cluster migration.
+# TTLs are mandatory on all non-permanent keys.
+# =============================================================================
+
+---
+# ---------------------------------------------------------------------------
+# 1. PUB/SUB CHANNELS (Redis channels → Kafka topics at Angel)
+# ---------------------------------------------------------------------------
+# Channel names follow Kafka topic convention for zero-change migration.
+# At Seed, all agents subscribe to Redis channels.
+# At Angel, these become Kafka topics with partition by tenant_id.
+
+pubsub_channels:
+
+  # A01 — Data Ingestion Agent
+  - channel: finops.ingestion.run-completed.v1
+    producer: A01
+    subscribers: [A02, A27]
+    message_format: JSON
+    max_payload_bytes: 8192
+
+  - channel: finops.ingestion.run-failed.v1
+    producer: A01
+    subscribers: [A27, A05]
+    message_format: JSON
+    max_payload_bytes: 4096
+
+  - channel: finops.ingestion.schema-changed.v1
+    producer: A01
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 4096
+
+  - channel: finops.ingestion.enrichment-updated.v1
+    producer: A01
+    subscribers: [A02, A03]
+    message_format: JSON
+    max_payload_bytes: 2048
+
+  - channel: finops.ingestion.quality-warning.v1
+    producer: A01
+    subscribers: [A05, A27]
+    message_format: JSON
+    max_payload_bytes: 2048
+
+  # A02 — Cost Normalization Agent
+  - channel: finops.normalization.run-completed.v1
+    producer: A02
+    subscribers: [A03, A04, A05, A27]
+    message_format: JSON
+    max_payload_bytes: 8192
+
+  - channel: finops.normalization.taxonomy-gap.v1
+    producer: A02
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 4096
+
+  - channel: finops.normalization.rate-card-gap.v1
+    producer: A02
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 2048
+
+  # A03 — Allocation Agent
+  - channel: finops.allocation.run-completed.v1
+    producer: A03
+    subscribers: [A04, A27]
+    message_format: JSON
+    max_payload_bytes: 8192
+
+  - channel: finops.allocation.coverage-alert.v1
+    producer: A03
+    subscribers: [A04, A27]
+    message_format: JSON
+    max_payload_bytes: 2048
+
+  - channel: finops.allocation.chargeback-generated.v1
+    producer: A03
+    subscribers: [A04, A27]
+    message_format: JSON
+    max_payload_bytes: 4096
+
+  # A04 — Reporting & Analytics Agent
+  - channel: finops.reporting.generation-completed.v1
+    producer: A04
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 2048
+
+  - channel: finops.reporting.insight-generated.v1
+    producer: A04
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 2048
+
+  # A05 — Anomaly Detection Agent
+  - channel: finops.anomaly.detection-completed.v1
+    producer: A05
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 4096
+
+  - channel: finops.anomaly.detected.v1
+    producer: A05
+    subscribers: [A04, A27]
+    message_format: JSON
+    max_payload_bytes: 8192
+
+  - channel: finops.anomaly.resolved.v1
+    producer: A05
+    subscribers: [A04, A27]
+    message_format: JSON
+    max_payload_bytes: 4096
+
+  - channel: finops.anomaly.storm-activated.v1
+    producer: A05
+    subscribers: [A27]
+    message_format: JSON
+    max_payload_bytes: 1024
+
+  # A27 — Orchestrator Agent (skeleton)
+  - channel: finops.platform.agent-health.v1
+    producer: A27
+    subscribers: [A04]
+    message_format: JSON
+    max_payload_bytes: 1024
+
+
+---
+# ---------------------------------------------------------------------------
+# 2. KEY-SPACE DESIGN — Agent State
+# ---------------------------------------------------------------------------
+# Pattern:  finops:{tenant_id}:agent:{agent_type}:{key}
+# Purpose:  Agent operational state, last-run metadata, health status
+
+agent_state:
+  pattern: "finops:{tenant_id}:agent:{agent_type}:{key}"
+  keys:
+    - key: last_run
+      type: HASH
+      ttl: 86400           # 24 hours
+      fields: [run_id, status, start_timestamp, end_timestamp,
+               records_processed, error_type, pipeline_version]
+      description: "Last pipeline execution summary per agent per tenant"
+
+    - key: health
+      type: HASH
+      ttl: 300             # 5 minutes (refreshed by heartbeat)
+      fields: [status, last_heartbeat, error_count_24h, uptime_seconds,
+               current_task]
+      description: "Real-time agent health for orchestrator polling"
+
+    - key: config_cache
+      type: STRING
+      ttl: 3600            # 1 hour
+      description: "Cached agent configuration (JSON blob) to avoid DB round-trip"
+
+    - key: retry_state
+      type: HASH
+      ttl: 7200            # 2 hours
+      fields: [retry_count, last_retry_timestamp, next_retry_timestamp,
+               backoff_seconds, error_type]
+      description: "Retry state for exponential backoff tracking"
+
+  examples:
+    - "finops:550e8400-e29b-41d4-a716-446655440000:agent:A01:last_run"
+    - "finops:550e8400-e29b-41d4-a716-446655440000:agent:A01:health"
+    - "finops:550e8400-e29b-41d4-a716-446655440000:agent:A05:retry_state"
+
+
+---
+# ---------------------------------------------------------------------------
+# 3. KEY-SPACE DESIGN — Tenant Context Cache
+# ---------------------------------------------------------------------------
+# Pattern:  finops:{tenant_id}:tenant:{key}
+# Purpose:  Frequently accessed tenant metadata cached from PostgreSQL
+
+tenant_cache:
+  pattern: "finops:{tenant_id}:tenant:{key}"
+  keys:
+    - key: context
+      type: HASH
+      ttl: 1800            # 30 minutes
+      fields: [tenant_name, k8s_namespace, vault_mount_path, storage_prefix,
+               notification_prefs, autonomy_overrides, sla_definitions]
+      description: "Core tenant context injected into every agent request"
+
+    - key: org_hierarchy
+      type: STRING
+      ttl: 3600            # 1 hour (JSON blob)
+      description: "Cached org hierarchy (BU → Application → Project → CostCenter)"
+
+    - key: connectors
+      type: SET
+      ttl: 1800            # 30 minutes
+      description: "Set of active connector_ids for quick lookup"
+
+    - key: rate_card_version
+      type: STRING
+      ttl: 3600            # 1 hour
+      description: "Current rate card version hash for cache invalidation"
+
+    - key: taxonomy_version
+      type: STRING
+      ttl: 3600            # 1 hour
+      description: "Current taxonomy version hash for cache invalidation"
+
+  examples:
+    - "finops:550e8400-e29b-41d4-a716-446655440000:tenant:context"
+    - "finops:550e8400-e29b-41d4-a716-446655440000:tenant:org_hierarchy"
+
+
+---
+# ---------------------------------------------------------------------------
+# 4. KEY-SPACE DESIGN — Ingestion Pipeline State (A01/A02)
+# ---------------------------------------------------------------------------
+# Pattern:  finops:{tenant_id}:ingestion:{key}
+# Purpose:  Pipeline deduplication, connector health, schema tracking
+
+ingestion_state:
+  pattern: "finops:{tenant_id}:ingestion:{key}"
+  keys:
+    - key: "dedup:{connector_id}:{billing_period}"
+      type: SET
+      ttl: 604800          # 7 days
+      description: "Record hash set for delta/dedup detection per connector per period"
+
+    - key: "connector:{connector_id}:health"
+      type: HASH
+      ttl: 300             # 5 minutes
+      fields: [status, last_run_timestamp, consecutive_failures, next_scheduled]
+      description: "Real-time connector health for dashboard polling"
+
+    - key: "schema:{connector_id}:current"
+      type: STRING
+      ttl: 86400           # 24 hours
+      description: "SHA256 hash of current source schema for change detection"
+
+    - key: lock:run:{connector_id}
+      type: STRING
+      ttl: 3600            # 1 hour (safety timeout for distributed lock)
+      description: "Distributed lock preventing concurrent ingestion for same connector"
+      note: "SET with NX + EX for mutual exclusion"
+
+
+---
+# ---------------------------------------------------------------------------
+# 5. KEY-SPACE DESIGN — Anomaly Detection State (A05)
+# ---------------------------------------------------------------------------
+# Pattern:  finops:{tenant_id}:anomaly:{key}
+# Purpose:  Detection baselines, storm mode state, suppression cache
+
+anomaly_state:
+  pattern: "finops:{tenant_id}:anomaly:{key}"
+  keys:
+    - key: "baseline:{dimension_hash}"
+      type: HASH
+      ttl: 604800          # 7 days (refreshed each detection cycle)
+      fields: [mean, stddev, ewma, last_updated, sample_count]
+      description: "Statistical baselines per cost dimension tuple"
+
+    - key: storm_mode
+      type: HASH
+      ttl: 7200            # 2 hours (auto-expires if not refreshed)
+      fields: [active, activated_at, anomaly_count, batch_window_minutes]
+      description: "Storm mode state for alert batching"
+
+    - key: suppression_cache
+      type: STRING
+      ttl: 3600            # 1 hour
+      description: "Cached active suppression rules (JSON) for fast evaluation"
+
+    - key: active_count
+      type: STRING
+      ttl: 300             # 5 minutes
+      description: "Current count of active (unresolved) anomalies for dashboard"
+
+
+---
+# ---------------------------------------------------------------------------
+# 6. KEY-SPACE DESIGN — Report & Dashboard Cache (A04)
+# ---------------------------------------------------------------------------
+# Pattern:  finops:{tenant_id}:reporting:{key}
+# Purpose:  Dashboard data cache, NL query session state
+
+reporting_cache:
+  pattern: "finops:{tenant_id}:reporting:{key}"
+  keys:
+    - key: "dashboard:{dashboard_id}:data"
+      type: STRING
+      ttl: 300             # 5 minutes (short TTL for freshness)
+      description: "Pre-computed dashboard data JSON for sub-second rendering"
+
+    - key: "nl_session:{session_id}"
+      type: LIST
+      ttl: 1800            # 30 minutes (conversation timeout)
+      description: "NL query multi-turn conversation history"
+
+    - key: "report_cache:{report_id}:{billing_period}"
+      type: STRING
+      ttl: 3600            # 1 hour
+      description: "Cached generated report data to avoid re-computation"
+
+
+---
+# ---------------------------------------------------------------------------
+# 7. KEY-SPACE DESIGN — Airflow / Pipeline Coordination
+# ---------------------------------------------------------------------------
+# Pattern:  finops:{tenant_id}:airflow:{key}
+# Purpose:  DAG run coordination, task state
+
+airflow_coordination:
+  pattern: "finops:{tenant_id}:airflow:{key}"
+  keys:
+    - key: "dag:{dag_id}:last_success"
+      type: STRING
+      ttl: 86400           # 24 hours
+      description: "Timestamp of last successful DAG completion"
+
+    - key: "dag:{dag_id}:lock"
+      type: STRING
+      ttl: 7200            # 2 hours (safety timeout)
+      description: "DAG-level distributed lock preventing overlapping runs"
+
+
+---
+# ---------------------------------------------------------------------------
+# 8. KEY-SPACE DESIGN — Session Store
+# ---------------------------------------------------------------------------
+# Pattern:  finops:session:{session_id}
+# Purpose:  User session state (not tenant-scoped — session ID is key)
+
+session_store:
+  pattern: "finops:session:{session_id}"
+  keys:
+    - key: "{session_id}"
+      type: HASH
+      ttl: 3600            # 1 hour session timeout
+      fields: [user_id, tenant_id, roles, permissions, login_timestamp,
+               last_activity, ip_address]
+      description: "User session data for API authentication middleware"
+
+
+---
+# ---------------------------------------------------------------------------
+# REDIS CONFIGURATION SUMMARY
+# ---------------------------------------------------------------------------
+
+configuration:
+  instance_type: cache.r6g.large
+  engine: redis 7.x
+  deployment: Single primary + Sentinel (2 replicas)
+  max_memory_policy: allkeys-lru
+  persistence: AOF (appendfsync everysec)
+  estimated_key_count_seed: ~5,000    # Single tenant, 5 agents
+  estimated_memory_seed: ~256MB
+  databases:
+    db0: "Agent state + tenant cache + pipeline state"
+    db1: "Pub/Sub channels (event bus)"
+    db2: "Session store"
+    db3: "Airflow coordination"
+
+  monitoring:
+    - metric: redis_connected_clients
+      alert_threshold: "> 500"
+    - metric: redis_used_memory_pct
+      alert_threshold: "> 80%"
+    - metric: redis_keyspace_misses_ratio
+      alert_threshold: "> 20%"
+    - metric: redis_pubsub_channels
+      expected: 18          # Seed event types
+
+  migration_to_angel:
+    - action: "Pub/Sub channels → Kafka topics (config change only)"
+    - action: "Add Redis Cluster mode for multi-tenant key sharding"
+    - action: "Session store → Dedicated Redis for sessions"

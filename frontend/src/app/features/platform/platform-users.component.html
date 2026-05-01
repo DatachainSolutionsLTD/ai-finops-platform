@@ -1,0 +1,336 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<!-- List pattern per 02_Component_Pattern_Library.md §3.2                   -->
+<!-- PageHeader → summary row → Filter/Search toolbar → AG Grid              -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- ── PageHeader with primary CTA ─────────────────────────────────── -->
+    <app-page-header
+      title="Platform Users"
+      subtitle="Manage platform-level access, roles, and MFA status">
+      <div slot="actions" class="header-actions">
+        <ion-button
+          fill="outline"
+          color="medium"
+          (click)="exportCsv()"
+          [disabled]="!hasRows()"
+          aria-label="Export users as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+        @if (canInviteUser()) {
+          <ion-button
+            fill="solid"
+            color="primary"
+            (click)="openInviteModal()">
+            <ion-icon name="person-add-outline" slot="start" aria-hidden="true"></ion-icon>
+            Invite user
+          </ion-button>
+        }
+      </div>
+    </app-page-header>
+
+    <!-- ── Summary stat row ─────────────────────────────────────────────── -->
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Platform user summary">
+        <div class="summary-stat">
+          <div class="summary-label">Total users</div>
+          <div class="summary-value">{{ s.totalUsers | number }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Active</div>
+          <div class="summary-value summary-value-success">{{ s.activeUsers | number }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Pending invites</div>
+          <div class="summary-value summary-value-info">{{ s.pendingInvites | number }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Suspended</div>
+          <div class="summary-value" [class.summary-value-warning]="s.suspendedUsers > 0">
+            {{ s.suspendedUsers | number }}
+          </div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">MFA adoption</div>
+          <div class="summary-value" [class.summary-value-warning]="s.mfaAdoptionPct < 80">
+            {{ s.mfaAdoptionPct | number:'1.0-0' }}%
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- ── Loading state ────────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <app-loading-state
+        variant="spinner"
+        message="Loading platform users...">
+      </app-loading-state>
+    }
+
+    <!-- ── Error state ──────────────────────────────────────────────────── -->
+    @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load users"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    }
+
+    <!-- ── Loaded content ───────────────────────────────────────────────── -->
+    @else if (hasData()) {
+
+      <!-- Filter / Search Toolbar -->
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter users">
+
+        <div class="searchbar-wrap">
+          <ion-searchbar
+            placeholder="Search by name or email..."
+            debounce="300"
+            animated="true"
+            [value]="searchText()"
+            (ionInput)="onSearchChange($any($event.detail.value))"
+            aria-label="Search users">
+          </ion-searchbar>
+        </div>
+
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <!-- Status filter -->
+          <ion-button id="filter-status" fill="outline" color="medium" size="default">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (statusFilter().length > 0) {
+              <span class="filter-count" aria-label="{{ statusFilter().length }} active filters">
+                {{ statusFilter().length }}
+              </span>
+            }
+          </ion-button>
+          <ion-popover trigger="filter-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)">
+                    <ion-checkbox
+                      slot="start"
+                      [checked]="statusFilter().includes(s)"
+                      [attr.aria-label]="'Filter by status ' + s">
+                    </ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <!-- Role filter -->
+          <ion-button id="filter-role" fill="outline" color="medium" size="default">
+            <ion-icon name="shield-outline" slot="start" aria-hidden="true"></ion-icon>
+            Role
+            @if (roleFilter().length > 0) {
+              <span class="filter-count" aria-label="{{ roleFilter().length }} active filters">
+                {{ roleFilter().length }}
+              </span>
+            }
+          </ion-button>
+          <ion-popover trigger="filter-role" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (r of roleOptions; track r) {
+                  <ion-item button (click)="toggleRoleFilter(r)">
+                    <ion-checkbox
+                      slot="start"
+                      [checked]="roleFilter().includes(r)"
+                      [attr.aria-label]="'Filter by role ' + r">
+                    </ion-checkbox>
+                    <ion-label>{{ roleLabels[r] }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">
+              Clear all
+            </ion-button>
+          }
+
+        </div>
+      </div>
+
+      <!-- Active filter chips -->
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (s of statusFilter(); track s) {
+            <ion-chip (click)="removeStatusChip(s)" aria-label="Remove status filter {{ s }}">
+              <ion-label>{{ s }}</ion-label>
+              <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (r of roleFilter(); track r) {
+            <ion-chip (click)="removeRoleChip(r)" [attr.aria-label]="'Remove role filter ' + r">
+              <ion-label>{{ roleLabels[r] }}</ion-label>
+              <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <!-- Bulk action bar -->
+      @if (hasSelection()) {
+        <div class="bulk-action-bar" role="toolbar" aria-label="Bulk actions">
+          <span class="bulk-count" aria-live="polite">
+            {{ selectionCount() }} user{{ selectionCount() > 1 ? 's' : '' }} selected
+          </span>
+          <div class="bulk-actions">
+            @if (canSuspendUser()) {
+              <ion-button fill="outline" color="warning" size="small" (click)="bulkSuspend()">
+                <ion-icon name="pause-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+                Suspend
+              </ion-button>
+            }
+            @if (canDeactivateUser()) {
+              <ion-button fill="outline" color="danger" size="small" (click)="bulkDeactivate()">
+                <ion-icon name="ban-outline" slot="start" aria-hidden="true"></ion-icon>
+                Deactivate
+              </ion-button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- AG Grid card -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">
+            {{ total() | number }} user{{ total() !== 1 ? 's' : '' }}
+          </ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+
+          @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10, 20, 50, 100]"
+              [animateRows]="true"
+              [rowSelection]="'multiple'"
+              [suppressRowClickSelection]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              (selectionChanged)="onSelectionChanged($event)"
+              aria-label="Platform users table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state
+              icon="people-outline"
+              title="No users match your filters"
+              description="Try adjusting your search or filter criteria."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+
+  </div>
+</ion-content>
+
+<!-- ── Invite User Modal ──────────────────────────────────────────────────── -->
+<ion-modal
+  [isOpen]="isInviteOpen()"
+  (didDismiss)="closeInviteModal()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  class="invite-modal"
+  aria-label="Invite new user">
+
+  <ng-template>
+    <div class="modal-shell">
+      <div class="modal-header">
+        <h2 class="modal-title">Invite user</h2>
+        <ion-button fill="clear" color="medium" (click)="closeInviteModal()" aria-label="Close modal">
+          <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+        </ion-button>
+      </div>
+
+      <form [formGroup]="inviteForm" class="invite-form" (ngSubmit)="submitInvite()">
+
+        <div class="form-field">
+          <label class="field-label" for="invite-email">
+            Email address <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ion-input
+            id="invite-email"
+            type="email"
+            formControlName="email"
+            placeholder="user@company.ae"
+            [class.input-error]="inviteFieldError('email')">
+          </ion-input>
+          @if (inviteFieldError('email'); as err) {
+            <p class="field-error" role="alert">⚠ {{ err }}</p>
+          }
+        </div>
+
+        <div class="form-field">
+          <label class="field-label" for="invite-name">
+            Display name <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ion-input
+            id="invite-name"
+            type="text"
+            formControlName="displayName"
+            placeholder="Full name"
+            [class.input-error]="inviteFieldError('displayName')">
+          </ion-input>
+          @if (inviteFieldError('displayName'); as err) {
+            <p class="field-error" role="alert">⚠ {{ err }}</p>
+          }
+        </div>
+
+        <div class="form-field">
+          <label class="field-label" for="invite-role">
+            Role <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <ion-select
+            id="invite-role"
+            formControlName="role"
+            placeholder="Select role"
+            interface="popover">
+            @for (r of roleOptions; track r) {
+              <ion-select-option [value]="r">{{ roleLabels[r] }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+
+        <div class="modal-footer">
+          <ion-button fill="outline" color="medium" (click)="closeInviteModal()">Cancel</ion-button>
+          <ion-button
+            fill="solid"
+            color="primary"
+            type="submit"
+            [disabled]="isInviting()">
+            @if (isInviting()) {
+              <ion-spinner name="crescent" aria-label="Sending invitation"></ion-spinner>
+            } @else {
+              Send invitation
+            }
+          </ion-button>
+        </div>
+
+      </form>
+    </div>
+  </ng-template>
+</ion-modal>

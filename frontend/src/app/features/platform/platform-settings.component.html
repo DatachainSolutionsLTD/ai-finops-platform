@@ -1,0 +1,243 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Detail/Edit pattern: PageHeader → tab nav → form card → sticky footer -->
+
+<ion-content class="settings-content">
+  <div class="page-container">
+
+    <app-page-header
+      title="Platform Settings"
+      subtitle="Global configuration for the FinOps platform">
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading platform settings..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load settings" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- Read-only identity block -->
+      @if (settings(); as s) {
+        <section class="identity-block" aria-label="Platform identity">
+          <dl class="identity-grid">
+            <div><dt>Platform ID</dt><dd class="mono">{{ s.platformId }}</dd></div>
+            <div><dt>Version</dt><dd class="mono">{{ s.platformVersion }}</dd></div>
+            <div><dt>Deployment region</dt><dd>{{ s.deploymentRegion }}</dd></div>
+            <div><dt>Deployed</dt><dd>{{ s.deployedAt | date:'d MMM y' }}</dd></div>
+          </dl>
+        </section>
+      }
+
+      <!-- Tab navigation -->
+      <nav class="tab-nav" role="tablist" aria-label="Settings sections">
+        @for (tab of tabs; track tab.id) {
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === tab.id"
+            role="tab"
+            [id]="'tab-' + tab.id"
+            [attr.aria-selected]="activeTab() === tab.id"
+            [attr.aria-controls]="'panel-' + tab.id"
+            (click)="selectTab(tab.id)">
+            <ion-icon [name]="tab.icon" aria-hidden="true"></ion-icon>
+            <span>{{ tab.label }}</span>
+            @if (tabHasErrors(tab.id)) {
+              <span class="tab-error-dot" aria-label="Section has errors"></span>
+            }
+          </button>
+        }
+      </nav>
+
+      <!-- Form card -->
+      <form [formGroup]="form" class="settings-form" (ngSubmit)="save()" novalidate>
+        <ion-card class="form-card">
+          <ion-card-content>
+
+            <!-- ── General tab ─────────────────────────────────────── -->
+            @if (activeTab() === 'general') {
+              <div class="form-section" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
+                <h3 class="section-heading">General configuration</h3>
+                <div class="form-grid">
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="s-name">Platform name <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-name" formControlName="platformName" [class.input-error]="fieldError('platformName')"></ion-input>
+                    @if (fieldError('platformName'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="s-url">Platform URL <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-url" type="url" formControlName="platformUrl" [class.input-error]="fieldError('platformUrl')"></ion-input>
+                    @if (fieldError('platformUrl'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-email">Support email <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-email" type="email" formControlName="supportEmail" [class.input-error]="fieldError('supportEmail')"></ion-input>
+                    @if (fieldError('supportEmail'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-max-tenants">Max tenants allowed <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-max-tenants" type="number" formControlName="maxTenantsAllowed" [class.input-error]="fieldError('maxTenantsAllowed')"></ion-input>
+                    @if (fieldError('maxTenantsAllowed'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ── Agents tab ──────────────────────────────────────── -->
+            @if (activeTab() === 'agents') {
+              <div class="form-section" role="tabpanel" id="panel-agents" aria-labelledby="tab-agents">
+                <h3 class="section-heading">Agent default configuration</h3>
+                <p class="section-hint">These values apply globally. Individual agent settings in Agent Configuration override these defaults.</p>
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label class="field-label" for="s-autonomy">Global autonomy ceiling <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-select id="s-autonomy" formControlName="globalAutonomyCeiling" interface="popover">
+                      @for (l of autonomyCeilingOptions; track l) { <ion-select-option [value]="l">{{ l }}</ion-select-option> }
+                    </ion-select>
+                    <p class="field-hint">No agent may operate above this autonomy level.</p>
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-retry">Default retry limit <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-retry" type="number" formControlName="defaultRetryLimit" [class.input-error]="fieldError('defaultRetryLimit')"></ion-input>
+                    @if (fieldError('defaultRetryLimit'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-backoff">Default retry backoff (s) <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-backoff" type="number" formControlName="defaultRetryBackoffSec" [class.input-error]="fieldError('defaultRetryBackoffSec')"></ion-input>
+                    @if (fieldError('defaultRetryBackoffSec'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ── Data & Audit tab ────────────────────────────────── -->
+            @if (activeTab() === 'data') {
+              <div class="form-section" role="tabpanel" id="panel-data" aria-labelledby="tab-data">
+                <h3 class="section-heading">Data retention & audit</h3>
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label class="field-label" for="s-retention">Data retention period <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-select id="s-retention" formControlName="dataRetentionPeriod" interface="popover">
+                      @for (opt of dataRetentionOptions; track opt) { <ion-select-option [value]="opt">{{ opt }}</ion-select-option> }
+                    </ion-select>
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-audit-days">Audit log retention (days) <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-audit-days" type="number" formControlName="auditLogRetentionDays" [class.input-error]="fieldError('auditLogRetentionDays')"></ion-input>
+                    @if (fieldError('auditLogRetentionDays'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field toggle-field form-field-wide">
+                    <label class="field-label" for="s-audit-log">Enable audit log</label>
+                    <ion-toggle id="s-audit-log" formControlName="enableAuditLog" aria-label="Enable audit log"></ion-toggle>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ── Security tab ────────────────────────────────────── -->
+            @if (activeTab() === 'security') {
+              <div class="form-section" role="tabpanel" id="panel-security" aria-labelledby="tab-security">
+                <h3 class="section-heading">Security policies</h3>
+                <div class="form-grid">
+                  <div class="form-field toggle-field form-field-wide">
+                    <label class="field-label" for="s-mfa">Enforce MFA platform-wide</label>
+                    <ion-toggle id="s-mfa" formControlName="enforceGlobalMfa" aria-label="Enforce global MFA"></ion-toggle>
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-session">Session timeout (min) <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-session" type="number" formControlName="sessionTimeoutMinutes" [class.input-error]="fieldError('sessionTimeoutMinutes')"></ion-input>
+                    @if (fieldError('sessionTimeoutMinutes'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-concurrent">Max concurrent sessions / user <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-concurrent" type="number" formControlName="maxConcurrentSessionsPerUser" [class.input-error]="fieldError('maxConcurrentSessionsPerUser')"></ion-input>
+                    @if (fieldError('maxConcurrentSessionsPerUser'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-pwdlen">Min password length <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-input id="s-pwdlen" type="number" formControlName="passwordMinLength" [class.input-error]="fieldError('passwordMinLength')"></ion-input>
+                    @if (fieldError('passwordMinLength'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="s-ips">Allowed IP ranges (CIDR, one per line)</label>
+                    <ion-textarea id="s-ips" formControlName="allowedIpRanges" rows="4" placeholder="10.0.0.0/8&#10;192.168.0.0/16"></ion-textarea>
+                    <p class="field-hint">Leave empty to allow all IP addresses. Use newline-separated CIDR notation.</p>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ── Notifications tab ───────────────────────────────── -->
+            @if (activeTab() === 'notifications') {
+              <div class="form-section" role="tabpanel" id="panel-notifications" aria-labelledby="tab-notifications">
+                <h3 class="section-heading">Alert notifications</h3>
+                <div class="form-grid">
+                  <div class="form-field toggle-field form-field-wide">
+                    <label class="field-label" for="s-email-enabled">Email alerts enabled</label>
+                    <ion-toggle id="s-email-enabled" formControlName="alertEmailEnabled" aria-label="Enable email alerts"></ion-toggle>
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="s-from-email">Alert sender email</label>
+                    <ion-input id="s-from-email" type="email" formControlName="alertEmailFrom" [class.input-error]="fieldError('alertEmailFrom')"></ion-input>
+                    @if (fieldError('alertEmailFrom'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                  </div>
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="s-webhook">Alert webhook URL</label>
+                    <ion-input id="s-webhook" type="url" formControlName="alertWebhookUrl" placeholder="https://hooks.example.com/..." [class.input-error]="fieldError('alertWebhookUrl')"></ion-input>
+                    @if (fieldError('alertWebhookUrl'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+                    <p class="field-hint">Leave empty to disable webhook notifications.</p>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ── Maintenance tab ─────────────────────────────────── -->
+            @if (activeTab() === 'maintenance') {
+              <div class="form-section" role="tabpanel" id="panel-maintenance" aria-labelledby="tab-maintenance">
+                <h3 class="section-heading">Maintenance mode</h3>
+                @if (form.get('maintenanceMode')?.value === 'Active') {
+                  <div class="maintenance-warning" role="alert">
+                    <ion-icon name="warning-outline" aria-hidden="true"></ion-icon>
+                    <span>Maintenance mode is <strong>Active</strong>. Non-admin users cannot access the platform.</span>
+                  </div>
+                }
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label class="field-label" for="s-maintenance">Maintenance mode <span class="required-mark" aria-hidden="true">*</span></label>
+                    <ion-select id="s-maintenance" formControlName="maintenanceMode" interface="popover">
+                      @for (m of maintenanceModeOptions; track m) { <ion-select-option [value]="m">{{ m }}</ion-select-option> }
+                    </ion-select>
+                  </div>
+                  <div class="form-field form-field-wide">
+                    <label class="field-label" for="s-maint-msg">Maintenance message</label>
+                    <ion-textarea id="s-maint-msg" formControlName="maintenanceMessage" rows="3" placeholder="We are performing scheduled maintenance. We'll be back shortly."></ion-textarea>
+                    <p class="field-hint">Shown to users during maintenance mode.</p>
+                  </div>
+                </div>
+              </div>
+            }
+
+          </ion-card-content>
+        </ion-card>
+      </form>
+
+    } <!-- /hasData -->
+  </div>
+
+  <!-- ── Sticky action footer ─────────────────────────────────────────── -->
+  @if (hasData()) {
+    <div class="sticky-footer" [class.dirty]="isDirty()" role="region" aria-label="Save settings">
+      <span class="footer-status">
+        @if (isDirty()) { Unsaved changes } @else { All changes saved }
+      </span>
+      <div class="footer-actions">
+        <ion-button fill="outline" color="medium" [disabled]="!isDirty() || isSaving()" (click)="cancel()">Cancel</ion-button>
+        @if (canEdit()) {
+          <ion-button fill="solid" color="primary" [disabled]="!canSave()" (click)="save()">
+            @if (isSaving()) { <ion-spinner name="crescent" aria-label="Saving"></ion-spinner> } @else { Save settings }
+          </ion-button>
+        }
+      </div>
+    </div>
+  }
+
+</ion-content>

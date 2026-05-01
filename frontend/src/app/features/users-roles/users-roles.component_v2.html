@@ -1,0 +1,77 @@
+<!-- FinOps Platform Design System v1.1 — Updated v2 -->
+<!-- Uses: SummaryStatRowComponent | GridShellCardComponent | BulkActionBarComponent -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Users & Roles" subtitle="Manage tenant user accounts, role assignments, and MFA status">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export CSV"><ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>Export</ion-button>
+        <ion-button fill="solid" color="primary" (click)="openInvite()" aria-label="Invite new user"><ion-icon name="person-add-outline" slot="start" aria-hidden="true"></ion-icon>Invite user</ion-button>
+      </div>
+    </app-page-header>
+
+
+    <app-summary-stat-row
+      [stats]="summaryStats()"
+      [columns]="5"
+      ariaLabel="User summary">
+    </app-summary-stat-row>
+
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading users..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load users" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter users">
+        <div class="searchbar-wrap"><ion-searchbar placeholder="Search by name or email..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search users"></ion-searchbar></div>
+        <div class="filter-chips" role="group">
+          <ion-button id="filter-u-role" fill="outline" color="medium"><ion-icon name="person-outline" slot="start" aria-hidden="true"></ion-icon>Role @if (roleFilter().length > 0) { <span class="filter-count">{{ roleFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-u-role" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (r of roleOptions; track r) { <ion-item button (click)="toggleRoleFilter(r)"><ion-checkbox slot="start" [checked]="roleFilter().includes(r)" [attr.aria-label]="'Filter by role ' + r"></ion-checkbox><ion-label>{{ r.replace('_',' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          <ion-button id="filter-u-status" fill="outline" color="medium"><ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-u-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear filters">Clear all</ion-button> }
+        </div>
+      </div>
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (r of roleFilter(); track r) { <ion-chip (click)="toggleRoleFilter(r)" [attr.aria-label]="'Remove ' + r"><ion-label>{{ r.replace('_',' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+        </div>
+      }
+      <app-grid-shell-card [rowCount]="total()" title="user" pluralTitle="users" [gridOffset]="380">
+        @if (hasRows()) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="rows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="20" [paginationPageSizeSelector]="[10,20,50]" [animateRows]="true" (gridReady)="onGridReady($event)" aria-label="Users and roles table"></ag-grid-angular>
+          } @else { <app-empty-state icon="people-outline" title="No users match your filters" description="Try adjusting your search or filters." [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state> }
+      </app-grid-shell-card>
+    }
+  </div>
+</ion-content>
+
+<!-- Invite user modal -->
+<ion-modal [isOpen]="isInviteOpen()" (didDismiss)="closeInvite()" [breakpoints]="[0,1]" [initialBreakpoint]="1" class="invite-modal" aria-label="Invite new user">
+  <ng-template>
+    <div class="modal-shell">
+      <div class="modal-header">
+        <h2 class="modal-title">Invite user</h2>
+        <ion-button fill="clear" color="medium" (click)="closeInvite()" aria-label="Close modal"><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-button>
+      </div>
+      <form [formGroup]="inviteForm" class="invite-form" (ngSubmit)="submitInvite()">
+        <div class="form-field">
+          <label class="field-label" for="invite-email">Email address <span class="required-mark" aria-hidden="true">*</span></label>
+          <ion-input id="invite-email" type="email" formControlName="email" placeholder="name@company.com" [class.input-error]="fieldError('email')"></ion-input>
+          @if (fieldError('email'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+        </div>
+        <div class="form-field">
+          <label class="field-label" for="invite-role">Role <span class="required-mark" aria-hidden="true">*</span></label>
+          <ion-select id="invite-role" formControlName="role" interface="popover" placeholder="Select a role" [class.input-error]="fieldError('role')">
+            @for (r of roleOptions; track r) { <ion-select-option [value]="r">{{ r.replace('_',' ') }}</ion-select-option> }
+          </ion-select>
+          @if (fieldError('role'); as err) { <p class="field-error" role="alert">⚠ {{ err }}</p> }
+        </div>
+        <div class="modal-footer">
+          <ion-button fill="outline" color="medium" (click)="closeInvite()">Cancel</ion-button>
+          <ion-button fill="solid" color="primary" type="submit" [disabled]="isSubmitting()">
+            @if (isSubmitting()) { <ion-spinner name="crescent" aria-label="Sending"></ion-spinner> } @else { Send invite }
+          </ion-button>
+        </div>
+      </form>
+    </div>
+  </ng-template>
+</ion-modal>

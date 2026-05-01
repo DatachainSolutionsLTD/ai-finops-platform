@@ -1,0 +1,18 @@
+// FinOps Platform Design System v1.1 — Updated v2
+// Shared library partials now imported via global styles.scss:
+//   @use 'styles/page-container'  — :host, .page-container, .header-actions
+//   @use 'styles/list-chrome'     — .summary-row, .filter-toolbar, .grid-card, .bulk-action-bar
+//   @use 'styles/ag-grid-cells'   — all ::ng-deep cell renderer styles
+//   @use 'styles/modals'          — .modal-shell, .action-footer
+// Only screen-specific overrides remain below.
+// ─────────────────────────────────────────────────────────────────────────────
+// Governance Policies List — tokens only.
+
+:host ::ng-deep {
+  .enf-chip { display: inline-flex; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); background-color: var(--finops-bg-subtle); color: var(--finops-text-secondary);
+    &.enf-block-provisioning { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+    &.enf-auto-remediate     { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+  }
+  .viol-count { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-bold); color: var(--finops-danger); }
+  .viol-zero  { color: var(--finops-text-disabled); font-size: var(--finops-text-sm); }
+}

@@ -1,0 +1,39 @@
+<!-- FinOps Platform Design System v1.1 — Updated v2 -->
+<!-- Uses: SummaryStatRowComponent | GridShellCardComponent | BulkActionBarComponent -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Retention Policies" subtitle="Data lifecycle rules governing retention, archival, and purge schedules">
+      <div slot="actions" class="header-actions"><ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export CSV"><ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>Export</ion-button></div>
+    </app-page-header>
+
+
+    <app-summary-stat-row
+      [stats]="summaryStats()"
+      [columns]="4"
+      ariaLabel="Retention policy summary">
+    </app-summary-stat-row>
+
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading retention policies..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load retention policies" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+      <div class="filter-toolbar" role="toolbar">
+        <div class="searchbar-wrap"><ion-searchbar placeholder="Search by name or category..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search policies"></ion-searchbar></div>
+        <div class="filter-chips" role="group">
+          <ion-button id="filter-ret-status" fill="outline" color="medium"><ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }</ion-button>
+          <ion-popover trigger="filter-ret-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear filters">Clear all</ion-button> }
+        </div>
+      </div>
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group">
+          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+        </div>
+      }
+      <app-grid-shell-card [rowCount]="total()" title="policy" pluralTitle="policies" [gridOffset]="380">
+        @if (hasRows()) {
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="rows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="20" [animateRows]="true" (gridReady)="onGridReady($event)" aria-label="Retention policies table"></ag-grid-angular>
+          } @else { <app-empty-state icon="time-outline" title="No policies match your filters" [action]="{ label: 'Clear filters', handler: clearFilters }"></app-empty-state> }
+      </app-grid-shell-card>
+    }
+  </div>
+</ion-content>

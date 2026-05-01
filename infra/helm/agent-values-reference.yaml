@@ -1,0 +1,254 @@
+# =============================================================================
+# Per-Agent Helm Values Overrides — Seed Round
+# Deploy: helm install finops-a01 ./agent-chart -f values-a01.yaml -n tenant-g42-seed
+# =============================================================================
+
+# --- values-a01.yaml (Data Ingestion Agent) ---
+# agent:
+#   type: A01
+#   name: a01-data-ingestion
+# image:
+#   repository: ${REGISTRY}/finops-a01-data-ingestion
+# serviceAccount:
+#   name: agent-a01-sa
+#   annotations:
+#     finops.io/vault-role: agent-a01
+# vault:
+#   role: agent-a01
+#   secretPaths:
+#     - secret/data/tenants/g42-seed/cloud/aws
+#     - secret/data/tenants/g42-seed/enterprise/servicenow
+#     - secret/data/tenants/g42-seed/enterprise/sap
+#     - secret/data/tenants/g42-seed/config
+# env:
+#   OTEL_SERVICE_NAME: finops-a01-data-ingestion
+#   AIRFLOW_DAG_ID: ingestion_pipeline_g42
+# resources:
+#   requests: { cpu: "300m", memory: "512Mi" }
+#   limits:   { cpu: "1500m", memory: "2Gi" }
+
+# --- values-a02.yaml (Cost Normalization Agent) ---
+# agent:
+#   type: A02
+#   name: a02-cost-normalization
+# vault:
+#   role: agent-a02
+#   secretPaths:
+#     - secret/data/tenants/g42-seed/config
+# env:
+#   OTEL_SERVICE_NAME: finops-a02-cost-normalization
+#   DBT_PROFILES_DIR: /app/dbt
+# resources:
+#   requests: { cpu: "300m", memory: "512Mi" }
+#   limits:   { cpu: "2000m", memory: "4Gi" }
+
+# --- values-a03.yaml (Allocation Agent) ---
+# agent:
+#   type: A03
+#   name: a03-allocation
+# vault:
+#   role: agent-a03
+#   secretPaths:
+#     - secret/data/tenants/g42-seed/config
+# env:
+#   OTEL_SERVICE_NAME: finops-a03-allocation
+# resources:
+#   requests: { cpu: "200m", memory: "256Mi" }
+#   limits:   { cpu: "1000m", memory: "2Gi" }
+
+# --- values-a04.yaml (Reporting & Analytics Agent) ---
+# agent:
+#   type: A04
+#   name: a04-reporting-analytics
+# vault:
+#   role: agent-a04
+#   secretPaths:
+#     - secret/data/tenants/g42-seed/config
+#     - secret/data/platform/anthropic
+# env:
+#   OTEL_SERVICE_NAME: finops-a04-reporting-analytics
+#   LLM_MODEL_ID: claude-sonnet-4-20250514
+# resources:
+#   requests: { cpu: "200m", memory: "512Mi" }
+#   limits:   { cpu: "1000m", memory: "2Gi" }
+
+# --- values-a05.yaml (Anomaly Detection Agent) ---
+# agent:
+#   type: A05
+#   name: a05-anomaly-detection
+# vault:
+#   role: agent-a05
+#   secretPaths:
+#     - secret/data/tenants/g42-seed/config
+#     - secret/data/platform/anthropic
+# env:
+#   OTEL_SERVICE_NAME: finops-a05-anomaly-detection
+#   DETECTION_SCHEDULE_CRON: "0 */4 * * *"
+#   LLM_MODEL_ID: claude-sonnet-4-20250514
+# resources:
+#   requests: { cpu: "500m", memory: "1Gi" }
+#   limits:   { cpu: "2000m", memory: "4Gi" }
+
+# --- values-a27.yaml (Orchestrator Agent skeleton) ---
+# agent:
+#   type: A27
+#   name: a27-orchestrator
+# vault:
+#   role: agent-a27
+#   secretPaths:
+#     - secret/data/tenants/g42-seed/config
+# env:
+#   OTEL_SERVICE_NAME: finops-a27-orchestrator
+# resources:
+#   requests: { cpu: "100m", memory: "128Mi" }
+#   limits:   { cpu: "500m", memory: "512Mi" }
+
+---
+# =============================================================================
+# AIRFLOW DEPLOYMENT — Platform namespace
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  namespace: finops-platform
+  labels:
+    app: airflow
+    component: webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow
+      component: webserver
+  template:
+    metadata:
+      labels:
+        app: airflow
+        component: webserver
+        finops.io/stage: seed
+    spec:
+      serviceAccountName: airflow-sa
+      nodeSelector:
+        role: system
+      containers:
+        - name: airflow-webserver
+          image: apache/airflow:2.8.3-python3.12
+          command: ["airflow", "webserver"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: LocalExecutor
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-db-credentials
+                  key: connection_string
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-secrets
+                  key: fernet_key
+            - name: AIRFLOW__WEBSERVER__SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-secrets
+                  key: webserver_secret
+            - name: AIRFLOW__CORE__DAGS_FOLDER
+              value: /opt/airflow/dags
+            - name: AIRFLOW__LOGGING__BASE_LOG_FOLDER
+              value: /opt/airflow/logs
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              value: "false"
+          resources:
+            requests: { cpu: "200m", memory: "512Mi" }
+            limits:   { cpu: "1000m", memory: "2Gi" }
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+      volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-dags-pvc
+        - name: logs
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  namespace: finops-platform
+  labels:
+    app: airflow
+    component: scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow
+      component: scheduler
+  template:
+    metadata:
+      labels:
+        app: airflow
+        component: scheduler
+        finops.io/stage: seed
+    spec:
+      serviceAccountName: airflow-sa
+      nodeSelector:
+        role: system
+      containers:
+        - name: airflow-scheduler
+          image: apache/airflow:2.8.3-python3.12
+          command: ["airflow", "scheduler"]
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: LocalExecutor
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-db-credentials
+                  key: connection_string
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-secrets
+                  key: fernet_key
+          resources:
+            requests: { cpu: "300m", memory: "512Mi" }
+            limits:   { cpu: "1500m", memory: "3Gi" }
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+      volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-dags-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-webserver
+  namespace: finops-platform
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: airflow
+    component: webserver
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: airflow-sa
+  namespace: finops-platform
+  annotations:
+    finops.io/vault-role: platform-airflow

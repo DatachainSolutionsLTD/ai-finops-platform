@@ -1,0 +1,26 @@
+// FinOps Platform Design System v1.1 — Network Optimizer Dashboard — tokens only.
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+.kpi-row { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (min-width: 576px) { grid-template-columns: repeat(2, 1fr); } @media (min-width: 992px) { grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-6); } }
+app-narrative-block { display: block; margin-bottom: var(--finops-space-6); }
+.chart-grid { display: grid; grid-template-columns: 1fr; gap: var(--finops-space-6); margin-bottom: var(--finops-space-8); @media (min-width: 992px) { grid-template-columns: repeat(2, 1fr); } }
+.chart-card { margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; } ion-card-title { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-4); } ion-card-content { padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); } }
+.grid-card { margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; } ion-card-title { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); } }
+.grid-content { padding: var(--finops-space-4) 0 0 0; }
+.finops-grid { width: 100%; height: 220px; }
+:host ::ng-deep {
+  .res-cell  { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 2px; }
+  .res-name  { font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); white-space: normal; line-height: var(--finops-leading-tight); }
+  .res-meta  { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+  .savings-cell { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-success); }
+  .risk-badge { display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.risk-low    { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.risk-medium { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+    &.risk-high   { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+  }
+  .status-badge { display: inline-flex; align-items: center; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+    &.success { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+    &.info    { background-color: var(--finops-info-subtle);    color: var(--finops-info); }
+    &.neutral { background-color: var(--finops-bg-subtle);      color: var(--finops-text-tertiary); }
+  }
+}

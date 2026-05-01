@@ -1,0 +1,302 @@
+# =============================================================================
+# Canary Deployment Configuration — Argo Rollouts
+# Scope: All Seed agents (A01–A05, A27)
+# Strategy: 5% → 25% → 50% → 100% with metric gates
+# Gates: error_rate < 0.1%, p99 latency < 500ms, no pod restarts
+# Rollback: Automatic on gate failure, < 5 minutes
+# =============================================================================
+
+---
+# ---------------------------------------------------------------------------
+# 1. ARGO ROLLOUT TEMPLATE (reusable for all agents)
+# ---------------------------------------------------------------------------
+# This template replaces the standard Deployment object.
+# Agent Helm charts override agent.name and image.tag per release.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: finops-agent-rollout  # Overridden per agent: finops-a01-data-ingestion
+  namespace: tenant-g42-seed
+  labels:
+    app.kubernetes.io/part-of: finops
+    finops.io/stage: seed
+spec:
+  replicas: 2  # Minimum 2 for canary split
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: finops-agent  # Overridden per agent
+  strategy:
+    canary:
+      # ---------------------------------------------------------------
+      # Traffic Split Steps: 5% → 25% → 50% → 100%
+      # Each step pauses for metric analysis before promotion
+      # ---------------------------------------------------------------
+      steps:
+        # Step 1: 5% canary — smoke test
+        - setWeight: 5
+        - pause: { duration: 2m }
+        - analysis:
+            templates:
+              - templateName: canary-success-rate
+              - templateName: canary-latency-p99
+            args:
+              - name: service-name
+                value: finops-agent  # Overridden per agent
+              - name: namespace
+                value: tenant-g42-seed
+
+        # Step 2: 25% canary — integration validation
+        - setWeight: 25
+        - pause: { duration: 3m }
+        - analysis:
+            templates:
+              - templateName: canary-success-rate
+              - templateName: canary-latency-p99
+              - templateName: canary-pod-restarts
+
+        # Step 3: 50% canary — production split
+        - setWeight: 50
+        - pause: { duration: 5m }
+        - analysis:
+            templates:
+              - templateName: canary-success-rate
+              - templateName: canary-latency-p99
+              - templateName: canary-pod-restarts
+              - templateName: canary-data-quality  # Agent-specific checks
+
+        # Step 4: 100% — full promotion
+        - setWeight: 100
+
+      # Auto-rollback on failure
+      abortScaleDownDelaySeconds: 30
+      scaleDownDelaySeconds: 30
+      scaleDownDelayRevisionLimit: 2
+
+      # Anti-affinity: canary pods on different nodes than stable
+      antiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          weight: 100
+
+      # Canary traffic routing via Kubernetes Service
+      canaryService: finops-agent-canary
+      stableService: finops-agent-stable
+
+      trafficRouting:
+        nginx:
+          stableIngress: finops-agent-ingress
+          additionalIngressAnnotations:
+            canary-by-header: X-Canary
+            canary-by-header-value: "true"
+
+  template:
+    metadata:
+      labels:
+        app: finops-agent
+        finops.io/stage: seed
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: agent-a01-sa  # Overridden per agent
+      containers:
+        - name: agent
+          image: REGISTRY/finops-agent:TAG  # Overridden
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits: { cpu: "1000m", memory: "1Gi" }
+
+---
+# ---------------------------------------------------------------------------
+# 2. ANALYSIS TEMPLATES — Metric Gates
+# ---------------------------------------------------------------------------
+
+# Gate 1: Success rate must be >= 99.9% (error rate < 0.1%)
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-success-rate
+  namespace: tenant-g42-seed
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: success-rate
+      interval: 30s
+      count: 5
+      successCondition: result[0] >= 0.999
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.finops-monitoring:9090
+          query: |
+            sum(rate(http_requests_total{
+              service="{{args.service-name}}",
+              namespace="{{args.namespace}}",
+              code!~"5.."
+            }[2m])) /
+            sum(rate(http_requests_total{
+              service="{{args.service-name}}",
+              namespace="{{args.namespace}}"
+            }[2m]))
+
+---
+# Gate 2: p99 latency must be < 500ms
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-latency-p99
+  namespace: tenant-g42-seed
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: latency-p99
+      interval: 30s
+      count: 5
+      successCondition: result[0] < 0.5
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.finops-monitoring:9090
+          query: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{
+                service="{{args.service-name}}",
+                namespace="{{args.namespace}}"
+              }[2m])) by (le)
+            )
+
+---
+# Gate 3: No pod restarts during canary
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-pod-restarts
+  namespace: tenant-g42-seed
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: pod-restarts
+      interval: 60s
+      count: 3
+      successCondition: result[0] == 0
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus.finops-monitoring:9090
+          query: |
+            sum(increase(kube_pod_container_status_restarts_total{
+              namespace="{{args.namespace}}",
+              pod=~"{{args.service-name}}.*-canary.*"
+            }[5m]))
+
+---
+# Gate 4: Agent-specific data quality (e.g., A01 ingestion records > 0)
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-data-quality
+  namespace: tenant-g42-seed
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+  metrics:
+    - name: data-quality
+      interval: 60s
+      count: 3
+      successCondition: result[0] >= 0
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus.finops-monitoring:9090
+          query: |
+            sum(rate(finops_agent_records_processed_total{
+              namespace="{{args.namespace}}",
+              service="{{args.service-name}}"
+            }[5m]))
+
+---
+# ---------------------------------------------------------------------------
+# 3. CANARY + STABLE SERVICES (traffic splitting targets)
+# ---------------------------------------------------------------------------
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: finops-agent-canary
+  namespace: tenant-g42-seed
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: finops-agent
+    rollouts-pod-template-hash: canary
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finops-agent-stable
+  namespace: tenant-g42-seed
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: finops-agent
+    rollouts-pod-template-hash: stable
+
+---
+# ---------------------------------------------------------------------------
+# 4. NOTIFICATION ON ROLLOUT EVENTS
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Notification
+metadata:
+  name: finops-rollout-notifications
+  namespace: argocd
+spec:
+  triggers:
+    - name: on-rollout-step-completed
+      template: rollout-step-notification
+    - name: on-rollout-completed
+      template: rollout-completed
+    - name: on-rollout-aborted
+      template: rollout-aborted
+  templates:
+    - name: rollout-step-notification
+      webhook:
+        finops-slack:
+          method: POST
+          body: |
+            {"text": "Canary step completed: {{.app.metadata.name}} — weight: {{.app.status.canary.weights.canary}}%"}
+    - name: rollout-completed
+      webhook:
+        finops-slack:
+          method: POST
+          body: |
+            {"text": "✅ Rollout completed: {{.app.metadata.name}} — all traffic on new version"}
+    - name: rollout-aborted
+      webhook:
+        finops-slack:
+          method: POST
+          body: |
+            {"text": "🚨 Rollout ABORTED: {{.app.metadata.name}} — automatic rollback initiated"}

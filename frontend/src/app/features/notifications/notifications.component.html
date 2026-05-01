@@ -1,0 +1,140 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Notifications Detail/Edit: PageHeader → Tab Nav → Form Cards → Sticky Footer -->
+<ion-content [scrollEvents]="true">
+  <div class="page-container">
+
+    <app-page-header title="Notification Settings" subtitle="Configure how and when the platform delivers alerts to your team">
+    </app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading notification settings..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load settings" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <!-- Tab nav -->
+      <div class="tab-nav" role="tablist" aria-label="Notification settings sections">
+        <button role="tab" [attr.aria-selected]="activeTab() === 'global'" [class.active]="activeTab() === 'global'" (click)="setActiveTab('global')">
+          <ion-icon name="settings-outline" aria-hidden="true"></ion-icon> Global
+        </button>
+        <button role="tab" [attr.aria-selected]="activeTab() === 'channels'" [class.active]="activeTab() === 'channels'" (click)="setActiveTab('channels')">
+          <ion-icon name="send-outline" aria-hidden="true"></ion-icon> Channels
+        </button>
+        <button role="tab" [attr.aria-selected]="activeTab() === 'quiet'" [class.active]="activeTab() === 'quiet'" (click)="setActiveTab('quiet')">
+          <ion-icon name="moon-outline" aria-hidden="true"></ion-icon> Quiet hours
+        </button>
+      </div>
+
+      <!-- Global tab -->
+      @if (activeTab() === 'global') {
+        <ion-card class="form-card" role="tabpanel" aria-labelledby="tab-global">
+          <ion-card-header><ion-card-title>Global settings</ion-card-title></ion-card-header>
+          <ion-card-content class="form-body">
+            <div class="form-row">
+              <div class="form-field-wide">
+                <div class="toggle-row">
+                  <div>
+                    <span class="field-label">Enable notifications</span>
+                    <p class="field-hint">When disabled, no notifications are sent for any event.</p>
+                  </div>
+                  <ion-toggle [checked]="globalEnabled()" (ionChange)="toggleGlobal($any($event.detail.checked))" aria-label="Enable all notifications"></ion-toggle>
+                </div>
+              </div>
+            </div>
+            @if (editSettings(); as s) {
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="field-label">Last updated</label>
+                  <p class="readonly-val">{{ s.updatedAt | date:'dd MMM yyyy HH:mm' }} by {{ s.updatedBy }}</p>
+                </div>
+              </div>
+            }
+          </ion-card-content>
+        </ion-card>
+      }
+
+      <!-- Channels tab -->
+      @if (activeTab() === 'channels') {
+        <div role="tabpanel" aria-labelledby="tab-channels">
+          @for (ch of channels(); track ch.channelId) {
+            <ion-card class="form-card channel-card" [class.channel-disabled]="!ch.isEnabled">
+              <ion-card-header>
+                <div class="channel-header">
+                  <ion-card-title>{{ ch.channel.replace('_',' ') }}</ion-card-title>
+                  <ion-toggle [checked]="ch.isEnabled" (ionChange)="toggleChannelEnabled(ch.channelId, $any($event.detail.checked))" [attr.aria-label]="'Enable ' + ch.channel + ' notifications'"></ion-toggle>
+                </div>
+              </ion-card-header>
+              @if (ch.isEnabled) {
+                <ion-card-content class="form-body">
+                  <div class="form-row">
+                    <div class="form-field-wide">
+                      <label class="field-label" [attr.for]="'dest-' + ch.channelId">
+                        {{ ch.channel === 'Email' ? 'Email address' : ch.channel === 'Webhook' ? 'Webhook URL' : ch.channel === 'Slack' ? 'Slack channel' : 'Destination' }}
+                      </label>
+                      <ion-input [id]="'dest-' + ch.channelId" [value]="ch.destination" [placeholder]="ch.channel === 'Email' ? 'alerts@company.com' : ch.channel === 'Webhook' ? 'https://hooks.example.com/...' : '#channel'" (ionInput)="setChannelDestination(ch.channelId, $any($event.detail.value))"></ion-input>
+                    </div>
+                  </div>
+                  <div class="form-field-wide">
+                    <span class="field-label">Events to notify on</span>
+                    <div class="event-grid">
+                      @for (ev of allEvents; track ev) {
+                        <label class="event-item">
+                          <input type="checkbox" class="event-check" [checked]="channelHasEvent(ch, ev)" (change)="toggleChannelEvent(ch.channelId, ev)" [attr.aria-label]="'Send ' + ev + ' events to ' + ch.channel">
+                          <span class="event-label">{{ eventLabel(ev) }}</span>
+                        </label>
+                      }
+                    </div>
+                  </div>
+                </ion-card-content>
+              }
+            </ion-card>
+          }
+        </div>
+      }
+
+      <!-- Quiet hours tab -->
+      @if (activeTab() === 'quiet') {
+        <ion-card class="form-card" role="tabpanel" aria-labelledby="tab-quiet">
+          <ion-card-header><ion-card-title>Quiet hours</ion-card-title></ion-card-header>
+          <ion-card-content class="form-body">
+            <div class="form-row">
+              <div class="form-field-wide">
+                <div class="toggle-row">
+                  <div>
+                    <span class="field-label">Enable quiet hours</span>
+                    <p class="field-hint">Suppress non-critical notifications during defined hours. Critical and budget breach alerts are always delivered.</p>
+                  </div>
+                  <ion-toggle [checked]="quietEnabled()" (ionChange)="toggleQuiet($any($event.detail.checked))" aria-label="Enable quiet hours"></ion-toggle>
+                </div>
+              </div>
+            </div>
+            @if (quietEnabled()) {
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="field-label" for="quiet-start">Start time</label>
+                  <ion-input id="quiet-start" type="time" [value]="editSettings()?.quietHoursStart" (ionInput)="setQuietField('quietHoursStart', $any($event.detail.value))"></ion-input>
+                </div>
+                <div class="form-field">
+                  <label class="field-label" for="quiet-end">End time</label>
+                  <ion-input id="quiet-end" type="time" [value]="editSettings()?.quietHoursEnd" (ionInput)="setQuietField('quietHoursEnd', $any($event.detail.value))"></ion-input>
+                </div>
+              </div>
+            }
+          </ion-card-content>
+        </ion-card>
+      }
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>
+
+<!-- Sticky action footer -->
+@if (hasData()) {
+  <div class="action-footer" [class.footer-dirty]="isDirty()" role="complementary" aria-label="Save actions">
+    <span class="footer-status">{{ isDirty() ? 'Unsaved changes' : 'All changes saved' }}</span>
+    <div class="footer-actions">
+      <ion-button fill="outline" color="medium" (click)="cancel()" [disabled]="!isDirty() || isSaving()">Cancel</ion-button>
+      <ion-button fill="solid" color="primary" (click)="save()" [disabled]="!isDirty() || isSaving()">
+        @if (isSaving()) { <ion-spinner name="crescent" aria-label="Saving"></ion-spinner> } @else { Save settings }
+      </ion-button>
+    </div>
+  </div>
+}

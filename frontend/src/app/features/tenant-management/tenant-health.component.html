@@ -1,0 +1,118 @@
+<!-- FinOps Platform Design System v1.1 — Tenant Health Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="Tenant Health" [subtitle]="subtitle()"></app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading tenant health..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load tenant health" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <!-- 4-KPI row -->
+      <section class="kpi-row" aria-label="Tenant health key metrics">
+        <app-kpi-card
+          label="FinOps maturity"
+          [value]="kpis()!.maturityScore.value | number:'1.0-0'"
+          unit="/ 100"
+          [deltaPercent]="kpis()!.maturityScore.deltaPercent"
+          [deltaDirection]="kpis()!.maturityScore.deltaDirection"
+          [sparklineData]="kpis()!.maturityScore.sparkline"
+          [status]="kpis()!.maturityScore.value >= 70 ? 'success' : kpis()!.maturityScore.value >= 40 ? 'neutral' : 'warning'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Agents healthy"
+          [value]="kpis()!.agentsHealthy.value | number"
+          [deltaPercent]="kpis()!.agentsHealthy.deltaPercent"
+          [deltaDirection]="kpis()!.agentsHealthy.deltaDirection"
+          [sparklineData]="kpis()!.agentsHealthy.sparkline"
+          status="neutral">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Governance posture"
+          [value]="kpis()!.governancePosture.value | number:'1.0-0'"
+          unit="%"
+          [deltaPercent]="kpis()!.governancePosture.deltaPercent"
+          [deltaDirection]="kpis()!.governancePosture.deltaDirection"
+          [sparklineData]="kpis()!.governancePosture.sparkline"
+          [status]="kpis()!.governancePosture.value >= 80 ? 'success' : kpis()!.governancePosture.value >= 60 ? 'neutral' : 'warning'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Pending savings"
+          [value]="kpis()!.pendingSavings.value | number:'1.0-0'"
+          [unit]="kpis()!.pendingSavings.currency"
+          [deltaPercent]="kpis()!.pendingSavings.deltaPercent"
+          [deltaDirection]="kpis()!.pendingSavings.deltaDirection"
+          [sparklineData]="kpis()!.pendingSavings.sparkline"
+          status="neutral">
+        </app-kpi-card>
+      </section>
+
+      <!-- Agent narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block [summary]="n.summary" [agentName]="n.agentName" [generatedAt]="n.generatedAt" [highlights]="n.highlights"></app-narrative-block>
+      }
+
+      <!-- 2-col: maturity radar + agent tier bar -->
+      <div class="chart-grid-2col">
+
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>FinOps capability radar</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="radarSeries()"
+              [chart]="radarChart"
+              [xaxis]="radarXAxis()"
+              [colors]="radarColors"
+              [stroke]="radarStroke"
+              [fill]="radarFill"
+              [dataLabels]="radarDataLabels"
+              [grid]="{ show: false }">
+            </apx-chart>
+            <div class="radar-legend" aria-label="Maturity band legend">
+              <span class="legend-item"><span class="legend-dot legend-run"></span>Run (70–100)</span>
+              <span class="legend-item"><span class="legend-dot legend-walk"></span>Walk (40–69)</span>
+              <span class="legend-item"><span class="legend-dot legend-crawl"></span>Crawl (&lt;40)</span>
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Agent health by tier</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="agentSeries()"
+              [chart]="agentChart"
+              [xaxis]="agentXAxis()"
+              [yaxis]="agentYAxis"
+              [colors]="agentColors"
+              [plotOptions]="agentPlotOptions"
+              [dataLabels]="agentDataLabels"
+              [legend]="agentLegend"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+
+            <!-- Agent tier table summary -->
+            <table class="tier-table" aria-label="Agent health by tier">
+              <thead>
+                <tr><th>Tier</th><th>Healthy</th><th>Degraded</th><th>Failed</th></tr>
+              </thead>
+              <tbody>
+                @for (t of dashboard()!.agentsByTier; track t.tier) {
+                  <tr [class.tier-row-warn]="t.degraded > 0 || t.failed > 0">
+                    <td class="tier-name">{{ t.tier }}</td>
+                    <td class="tier-ok">{{ t.healthy }}</td>
+                    <td [class.tier-warn]="t.degraded > 0">{{ t.degraded }}</td>
+                    <td [class.tier-fail]="t.failed > 0">{{ t.failed }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </ion-card-content>
+        </ion-card>
+
+      </div>
+    }
+  </div>
+</ion-content>

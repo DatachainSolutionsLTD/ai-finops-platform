@@ -1,0 +1,155 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// Platform Settings — component styles. Tokens only, no hex literals.
+
+:host { display: block; background-color: var(--finops-bg-page); }
+
+.settings-content { --padding-bottom: 120px; }
+
+.page-container {
+  max-width: 1040px; margin: 0 auto;
+  padding: var(--finops-space-6);
+  @media (min-width: 768px) { padding: var(--finops-space-8); }
+}
+
+// ── Identity block ────────────────────────────────────────────────────────
+.identity-block {
+  background-color: var(--finops-bg-subtle);
+  border-radius: var(--finops-radius-md);
+  padding: var(--finops-space-4) var(--finops-space-6);
+  margin-bottom: var(--finops-space-6);
+}
+.identity-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-6); margin: 0;
+  @media (max-width: 768px) { grid-template-columns: repeat(2, 1fr); }
+  div { display: flex; flex-direction: column; gap: var(--finops-space-1); }
+  dt { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+  dd { font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); color: var(--finops-text-primary); margin: 0; }
+  .mono { font-family: var(--finops-font-mono); font-size: var(--finops-text-xs); }
+}
+
+// ── Tab nav ───────────────────────────────────────────────────────────────
+.tab-nav {
+  display: flex; flex-wrap: wrap; gap: 0;
+  border-bottom: 2px solid var(--finops-border-default);
+  margin-bottom: var(--finops-space-6);
+  overflow-x: auto;
+}
+.tab-btn {
+  display: flex; align-items: center; gap: var(--finops-space-2);
+  padding: var(--finops-space-3) var(--finops-space-4);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium);
+  color: var(--finops-text-tertiary);
+  cursor: pointer; white-space: nowrap;
+  transition: color var(--finops-duration-fast) var(--finops-easing-standard);
+  position: relative;
+
+  ion-icon { font-size: 16px; }
+
+  &:hover { color: var(--finops-text-primary); }
+
+  &.active {
+    color: var(--finops-brand-primary);
+    border-bottom-color: var(--finops-brand-primary);
+    font-weight: var(--finops-font-semibold);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--finops-brand-primary);
+    outline-offset: 2px;
+    border-radius: var(--finops-radius-sm);
+  }
+}
+.tab-error-dot {
+  width: 6px; height: 6px;
+  background-color: var(--finops-danger);
+  border-radius: var(--finops-radius-full);
+  flex-shrink: 0;
+}
+
+// ── Form card ─────────────────────────────────────────────────────────────
+.form-card {
+  margin: 0;
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+  ion-card-content { padding: var(--finops-space-8); }
+}
+
+.form-section { display: flex; flex-direction: column; gap: var(--finops-space-6); }
+.section-heading {
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold);
+  color: var(--finops-text-primary); margin: 0 0 var(--finops-space-2);
+}
+.section-hint { font-size: var(--finops-text-sm); color: var(--finops-text-secondary); margin: 0; }
+
+.form-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--finops-space-6) var(--finops-space-8);
+  @media (max-width: 768px) { grid-template-columns: 1fr; }
+}
+
+.form-field { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.form-field-wide { grid-column: 1 / -1; }
+.toggle-field { flex-direction: row; align-items: center; justify-content: space-between; }
+
+.field-label   { font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); color: var(--finops-text-primary); }
+.required-mark { color: var(--finops-danger); margin-left: var(--finops-space-1); }
+.field-hint    { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); margin: 0; }
+.field-error   { font-size: var(--finops-text-xs); color: var(--finops-danger); margin: 0; }
+.input-error   { --border-color: var(--finops-danger); }
+
+// ── Maintenance warning ───────────────────────────────────────────────────
+.maintenance-warning {
+  display: flex; align-items: center; gap: var(--finops-space-3);
+  padding: var(--finops-space-4);
+  background-color: var(--finops-danger-subtle);
+  border: 1px solid var(--finops-danger);
+  border-radius: var(--finops-radius-md);
+  font-size: var(--finops-text-sm);
+  color: var(--finops-danger);
+
+  ion-icon { font-size: 20px; flex-shrink: 0; }
+}
+
+// ── Sticky footer ─────────────────────────────────────────────────────────
+.sticky-footer {
+  position: fixed;
+  bottom: 0;
+  left: var(--finops-sidenav-width);
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--finops-space-4) var(--finops-space-8);
+  background-color: var(--finops-bg-surface);
+  border-top: 1px solid var(--finops-border-default);
+  box-shadow: 0 -2px 8px rgba(38, 38, 38, 0.06);
+  z-index: var(--finops-z-sticky);
+  transition: background-color var(--finops-duration-normal) var(--finops-easing-standard);
+
+  &.dirty {
+    background-color: var(--finops-warning-subtle);
+    border-top-color: var(--finops-warning);
+  }
+
+  @media (max-width: 768px) { left: 0; padding: var(--finops-space-4) var(--finops-space-6); }
+}
+
+.footer-status {
+  font-size: var(--finops-text-sm);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-text-secondary);
+}
+
+.footer-actions {
+  display: flex;
+  gap: var(--finops-space-3);
+
+  ion-button { --border-radius: var(--finops-radius-md); text-transform: none; letter-spacing: 0; }
+}

@@ -1,0 +1,25 @@
+// FinOps Platform Design System v1.1 — Billing Dashboard — tokens only.
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: var(--finops-content-max-width); margin: 0 auto; padding: var(--finops-space-6); @media (min-width: 768px) { padding: var(--finops-space-8); } }
+.plan-chip    { display: inline-flex; padding: 2px var(--finops-space-3); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-bold); background-color: var(--finops-brand-primary-subtle); color: var(--finops-brand-primary); margin-right: var(--finops-space-2); }
+.renewal-chip { display: inline-flex; padding: 2px var(--finops-space-3); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium);
+  &.billing-ok   { background-color: var(--finops-success-subtle); color: var(--finops-success); }
+  &.billing-warn { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); }
+  &.billing-err  { background-color: var(--finops-danger-subtle);  color: var(--finops-danger); }
+}
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (max-width: 992px) { grid-template-columns: repeat(2, 1fr); } @media (max-width: 576px) { grid-template-columns: 1fr; } }
+.kpi-card-fp { display: flex; flex-direction: column; gap: var(--finops-space-2); padding: var(--finops-space-5); background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); }
+.kpi-label { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi-value { font-size: var(--finops-text-3xl); font-weight: var(--finops-font-bold); color: var(--finops-text-primary); }
+.fp-bar-track { height: 8px; background-color: var(--finops-border-default); border-radius: var(--finops-radius-full); overflow: hidden; }
+.fp-bar-fill  { height: 100%; border-radius: var(--finops-radius-full); transition: width 0.3s; &.fp-ok { background-color: var(--finops-success); } &.fp-warn { background-color: var(--finops-warning); } &.fp-danger { background-color: var(--finops-danger); } }
+.fp-meta      { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+.chart-card-full { background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); margin: 0 0 var(--finops-space-6); ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; } ion-card-title { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0 0 var(--finops-space-4); } ion-card-content { padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); } }
+.grid-card { margin: 0; background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; } ion-card-title { font-family: var(--finops-font-family); font-size: var(--finops-text-base); font-weight: var(--finops-font-semibold); color: var(--finops-text-secondary); } }
+.grid-content { padding: var(--finops-space-4) 0 0 0; }
+.finops-grid  { width: 100%; height: 260px; }
+:host ::ng-deep {
+  .amount-cell { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  .status-badge { display: inline-flex; padding: 2px var(--finops-space-2); border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); &.success { background-color: var(--finops-success-subtle); color: var(--finops-success); } &.warning { background-color: var(--finops-warning-subtle); color: var(--finops-warning-dark); } &.danger { background-color: var(--finops-danger-subtle); color: var(--finops-danger); } }
+  .dl-link { color: var(--finops-brand-primary); font-size: var(--finops-text-sm); text-decoration: none; display: inline-flex; align-items: center; gap: 2px; &:hover { text-decoration: underline; } &:focus-visible { outline: 2px solid var(--finops-brand-primary); outline-offset: 2px; } }
+}

@@ -1,0 +1,293 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List + Detail Drawer pattern                          -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- ── PageHeader ───────────────────────────────────────────────────── -->
+    <app-page-header
+      title="Agent Configuration"
+      subtitle="Manage autonomy levels, schedules, and operational parameters for all agents">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export agent list as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+      </div>
+    </app-page-header>
+
+    <!-- ── Summary stat row ─────────────────────────────────────────────── -->
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Agent platform summary">
+        <div class="summary-stat">
+          <div class="summary-label">Total agents</div>
+          <div class="summary-value">{{ s.totalAgents }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Running</div>
+          <div class="summary-value summary-value-success">{{ s.runningAgents }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Degraded / Error</div>
+          <div class="summary-value" [class.summary-value-warning]="s.degradedAgents > 0">{{ s.degradedAgents }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Disabled</div>
+          <div class="summary-value">{{ s.disabledAgents }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Pending jobs</div>
+          <div class="summary-value" [class.summary-value-info]="s.pendingJobs > 0">{{ s.pendingJobs }}</div>
+        </div>
+      </section>
+    }
+
+    <!-- ── Loading / Error ──────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading agent configuration..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load agents" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- Filter toolbar -->
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter agents">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search agents..." debounce="300" animated="true"
+            [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search agents">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-agent-status" fill="outline" color="medium">
+            <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (statusFilter().length > 0) {
+              <span class="filter-count">{{ statusFilter().length }}</span>
+            }
+          </ion-button>
+          <ion-popover trigger="filter-agent-status" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of statusOptions; track s) {
+                  <ion-item button (click)="toggleStatusFilter(s)">
+                    <ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-category" fill="outline" color="medium">
+            <ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>
+            Category
+            @if (categoryFilter().length > 0) {
+              <span class="filter-count">{{ categoryFilter().length }}</span>
+            }
+          </ion-button>
+          <ion-popover trigger="filter-category" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (c of categoryOptions; track c) {
+                  <ion-item button (click)="toggleCategoryFilter(c)">
+                    <ion-checkbox slot="start" [checked]="categoryFilter().includes(c)" [attr.aria-label]="'Filter by category ' + c"></ion-checkbox>
+                    <ion-label>{{ c }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      <!-- AG Grid -->
+      <ion-card class="grid-card">
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10, 20, 50]"
+              [animateRows]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              aria-label="Agent configuration table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state icon="cube-outline" title="No agents match your filters"
+              description="Try adjusting your search or filter criteria."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>
+
+<!-- ── Detail Drawer Modal ────────────────────────────────────────────────── -->
+<ion-modal
+  [isOpen]="isDrawerOpen()"
+  (didDismiss)="closeDrawer()"
+  [breakpoints]="[0, 1]"
+  [initialBreakpoint]="1"
+  class="drawer-modal"
+  aria-label="Agent configuration drawer">
+  <ng-template>
+    <div class="drawer-shell">
+
+      <!-- Drawer header -->
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          @if (selectedDetail(); as d) {
+            <span class="drawer-agent-code">{{ d.agentCode }}</span>
+            <h2 class="drawer-title">{{ d.displayName }}</h2>
+          } @else {
+            <h2 class="drawer-title">Agent Configuration</h2>
+          }
+        </div>
+        <ion-button fill="clear" color="medium" (click)="closeDrawer()" aria-label="Close drawer">
+          <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Drawer body -->
+      <div class="drawer-body">
+
+        @if (isDrawerLoading()) {
+          <app-loading-state variant="spinner" message="Loading agent detail..."></app-loading-state>
+        } @else if (drawerLoadError()) {
+          <app-empty-state icon="alert-circle-outline" title="Unable to load agent" [description]="drawerLoadError()!" [action]="{ label: 'Retry', handler: retryDrawer }"></app-empty-state>
+        } @else if (selectedDetail(); as d) {
+
+          <!-- Read-only identity -->
+          <section class="identity-block" aria-label="Agent identity">
+            <dl class="identity-grid">
+              <div><dt>Agent ID</dt><dd class="mono">{{ d.agentId }}</dd></div>
+              <div><dt>Version</dt><dd class="mono">{{ d.version }}</dd></div>
+              <div><dt>Category</dt><dd>{{ d.category }}</dd></div>
+              <div><dt>Last run</dt><dd>{{ d.lastRunAt ? d.lastRunAt : 'Never' }}</dd></div>
+            </dl>
+          </section>
+
+          @if (d.description) {
+            <p class="agent-description">{{ d.description }}</p>
+          }
+
+          <!-- Editable form -->
+          <form [formGroup]="drawerForm" class="drawer-form">
+
+            <!-- Status toggle -->
+            <div class="form-field toggle-field">
+              <label class="field-label" for="drawer-enabled">Agent enabled</label>
+              <ion-toggle id="drawer-enabled" formControlName="enabled" aria-label="Enable or disable this agent"></ion-toggle>
+            </div>
+
+            <!-- Autonomy level -->
+            <div class="form-field">
+              <label class="field-label" for="drawer-autonomy">
+                Autonomy level <span class="required-mark" aria-hidden="true">*</span>
+              </label>
+              <ion-select id="drawer-autonomy" formControlName="autonomyLevel" interface="popover">
+                @for (entry of autonomyLabels | keyvalue; track entry.key) {
+                  <ion-select-option [value]="entry.key">{{ entry.value }}</ion-select-option>
+                }
+              </ion-select>
+            </div>
+
+            <!-- Schedule -->
+            <div class="form-field">
+              <label class="field-label" for="drawer-schedule">Schedule (cron)</label>
+              <ion-input id="drawer-schedule" formControlName="scheduleExpression" placeholder="e.g. 0 */6 * * *"></ion-input>
+              <p class="field-hint">Leave empty to disable scheduled runs. Uses UTC timezone.</p>
+            </div>
+
+            <div class="form-row">
+              <!-- Max concurrent jobs -->
+              <div class="form-field">
+                <label class="field-label" for="drawer-concurrency">
+                  Max concurrent jobs <span class="required-mark" aria-hidden="true">*</span>
+                </label>
+                <ion-input id="drawer-concurrency" type="number" formControlName="maxConcurrentJobs"
+                  [class.input-error]="drawerFieldError('maxConcurrentJobs')">
+                </ion-input>
+                @if (drawerFieldError('maxConcurrentJobs'); as err) {
+                  <p class="field-error" role="alert">⚠ {{ err }}</p>
+                }
+              </div>
+
+              <!-- Retry limit -->
+              <div class="form-field">
+                <label class="field-label" for="drawer-retry-limit">
+                  Retry limit <span class="required-mark" aria-hidden="true">*</span>
+                </label>
+                <ion-input id="drawer-retry-limit" type="number" formControlName="retryLimit"
+                  [class.input-error]="drawerFieldError('retryLimit')">
+                </ion-input>
+                @if (drawerFieldError('retryLimit'); as err) {
+                  <p class="field-error" role="alert">⚠ {{ err }}</p>
+                }
+              </div>
+            </div>
+
+            <!-- Config JSON -->
+            <div class="form-field">
+              <label class="field-label" for="drawer-config">Configuration JSON</label>
+              <ion-textarea id="drawer-config" formControlName="configJson" :rows="8" class="config-json-area"
+                placeholder='{ "key": "value" }' auto-grow="false">
+              </ion-textarea>
+              <p class="field-hint">Raw configuration passed to the agent at runtime.</p>
+            </div>
+
+          </form>
+
+          <!-- Dependency info -->
+          @if (d.downstreamAgents.length > 0) {
+            <div class="dep-section">
+              <p class="dep-label">Downstream agents</p>
+              <div class="dep-chips">
+                @for (a of d.downstreamAgents; track a) {
+                  <span class="dep-chip">{{ a }}</span>
+                }
+              </div>
+            </div>
+          }
+
+        } <!-- /selectedDetail -->
+      </div>
+
+      <!-- Drawer footer -->
+      @if (selectedDetail()) {
+        <div class="drawer-footer">
+          <ion-button fill="outline" color="medium" size="small" (click)="triggerRun()" [disabled]="!canConfigAgent()" aria-label="Trigger manual run">
+            <ion-icon name="play-outline" slot="start" aria-hidden="true"></ion-icon>
+            Run now
+          </ion-button>
+          <div class="drawer-footer-actions">
+            <ion-button fill="outline" color="medium" (click)="closeDrawer()">Close</ion-button>
+            @if (canConfigAgent()) {
+              <ion-button fill="solid" color="primary" [disabled]="!canSave()" (click)="saveDrawer()">
+                @if (isSaving()) {
+                  <ion-spinner name="crescent" aria-label="Saving configuration"></ion-spinner>
+                } @else {
+                  Save
+                }
+              </ion-button>
+            }
+          </div>
+        </div>
+      }
+
+    </div>
+  </ng-template>
+</ion-modal>

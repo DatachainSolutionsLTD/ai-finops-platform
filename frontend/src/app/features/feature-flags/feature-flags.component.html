@@ -1,0 +1,136 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List with toggle variant — filter toolbar + AG Grid with per-row toggle cells -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header
+      title="Feature Flag Management"
+      subtitle="Enable or disable platform features for all tenants">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export flags as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+      </div>
+    </app-page-header>
+
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Feature flag summary">
+        <div class="summary-stat"><div class="summary-label">Total flags</div><div class="summary-value">{{ s.total }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Enabled</div><div class="summary-value summary-value-success">{{ s.enabled }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Disabled</div><div class="summary-value">{{ s.disabled }}</div></div>
+        <div class="summary-stat"><div class="summary-label">Partial rollout</div><div class="summary-value summary-value-info">{{ s.partial }}</div></div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading feature flags..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load feature flags" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- Filter toolbar -->
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter feature flags">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search by name or key..." debounce="300" animated="true"
+            [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search flags">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-ff-category" fill="outline" color="medium">
+            <ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>
+            Category
+            @if (categoryFilter().length > 0) { <span class="filter-count">{{ categoryFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-ff-category" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (c of categoryOptions; track c) {
+                  <ion-item button (click)="toggleCategoryFilter(c)">
+                    <ion-checkbox slot="start" [checked]="categoryFilter().includes(c)" [attr.aria-label]="'Filter by category ' + c"></ion-checkbox>
+                    <ion-label>{{ c }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <!-- Enabled state quick filter -->
+          <ion-button
+            fill="outline"
+            [color]="enabledFilter() === true ? 'primary' : 'medium'"
+            (click)="setEnabledFilter(enabledFilter() === true ? null : true)"
+            aria-label="Show enabled flags only">
+            Enabled only
+          </ion-button>
+          <ion-button
+            fill="outline"
+            [color]="enabledFilter() === false ? 'primary' : 'medium'"
+            (click)="setEnabledFilter(enabledFilter() === false ? null : false)"
+            aria-label="Show disabled flags only">
+            Disabled only
+          </ion-button>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      <!-- Active filter chips -->
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (c of categoryFilter(); track c) {
+            <ion-chip (click)="toggleCategoryFilter(c)" [attr.aria-label]="'Remove filter ' + c">
+              <ion-label>{{ c }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @if (enabledFilter() === true) {
+            <ion-chip (click)="setEnabledFilter(null)" aria-label="Remove enabled filter">
+              <ion-label>Enabled only</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @if (enabledFilter() === false) {
+            <ion-chip (click)="setEnabledFilter(null)" aria-label="Remove disabled filter">
+              <ion-label>Disabled only</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <!-- AG Grid with click delegation for toggle -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">{{ total() }} flag{{ total() !== 1 ? 's' : '' }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <div (click)="onGridClick($event)">
+              <ag-grid-angular
+                class="ag-theme-quartz finops-grid"
+                [rowData]="rows()"
+                [columnDefs]="colDefs"
+                [defaultColDef]="defaultColDef"
+                [pagination]="true"
+                [paginationPageSize]="20"
+                [paginationPageSizeSelector]="[10, 20, 50]"
+                [animateRows]="true"
+                (gridReady)="onGridReady($event)"
+                aria-label="Feature flags table">
+              </ag-grid-angular>
+            </div>
+          } @else {
+            <app-empty-state icon="toggle-outline" title="No flags match your filters"
+              description="Try adjusting your search or filter criteria."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

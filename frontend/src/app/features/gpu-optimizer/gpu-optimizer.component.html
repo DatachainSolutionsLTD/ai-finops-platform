@@ -1,0 +1,43 @@
+<!-- FinOps Platform Design System v1.1 — GPU Optimizer Dashboard -->
+<ion-content>
+  <div class="page-container">
+    <app-page-header title="GPU Optimizer" [subtitle]="subtitle()"></app-page-header>
+
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading GPU data..."></app-loading-state> }
+    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load GPU data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
+    @else if (hasData()) {
+
+      <section class="kpi-row" aria-label="Key GPU optimization metrics">
+        <app-kpi-card label="Avg CUDA utilisation" [value]="kpis()!.avgCudaUtilPct.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.avgCudaUtilPct.deltaPercent" [deltaDirection]="kpis()!.avgCudaUtilPct.deltaDirection" [sparklineData]="kpis()!.avgCudaUtilPct.sparkline" [status]="kpis()!.avgCudaUtilPct.value >= 70 ? 'success' : kpis()!.avgCudaUtilPct.value >= 40 ? 'warning' : 'danger'"></app-kpi-card>
+        <app-kpi-card label="Idle GPU cost" [value]="kpis()!.idleGpuCost.value | number:'1.0-0'" [unit]="kpis()!.idleGpuCost.currency" [deltaPercent]="kpis()!.idleGpuCost.deltaPercent" [deltaDirection]="kpis()!.idleGpuCost.deltaDirection" [sparklineData]="kpis()!.idleGpuCost.sparkline" [status]="kpis()!.idleGpuCost.deltaDirection === 'down' ? 'success' : 'warning'"></app-kpi-card>
+        <app-kpi-card label="MIG efficiency" [value]="kpis()!.migEfficiency.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.migEfficiency.deltaPercent" [deltaDirection]="kpis()!.migEfficiency.deltaDirection" [sparklineData]="kpis()!.migEfficiency.sparkline" [status]="kpis()!.migEfficiency.value >= 80 ? 'success' : 'warning'"></app-kpi-card>
+        <app-kpi-card label="Savings identified" [value]="kpis()!.savingsIdentified.value | number:'1.0-0'" [unit]="kpis()!.savingsIdentified.currency" [deltaPercent]="kpis()!.savingsIdentified.deltaPercent" [deltaDirection]="kpis()!.savingsIdentified.deltaDirection" [sparklineData]="kpis()!.savingsIdentified.sparkline" status="neutral"></app-kpi-card>
+      </section>
+
+      @if (dashboard()?.narrative; as n) { <app-narrative-block [summary]="n.summary" [highlights]="n.highlights" [agentName]="n.agentName" [generatedAt]="n.generatedAt"></app-narrative-block> }
+
+      <ion-card class="chart-card-full">
+        <ion-card-header><ion-card-title>Fleet CUDA &amp; vRAM utilisation (14 days)</ion-card-title></ion-card-header>
+        <ion-card-content>
+          <apx-chart [series]="trendSeries()" [chart]="trendChart" [xaxis]="trendXAxis()" [yaxis]="trendYAxis" [stroke]="trendStroke" [colors]="trendColors" [tooltip]="trendTooltip" [dataLabels]="trendDataLabels" [legend]="trendLegend" [grid]="{ borderColor: 'var(--finops-border-subtle)' }"></apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <section class="lower-grid" aria-label="GPU detail">
+        <ion-card class="grid-card">
+          <ion-card-header><ion-card-title>GPU node fleet</ion-card-title></ion-card-header>
+          <ion-card-content class="grid-content">
+            <ag-grid-angular class="ag-theme-quartz finops-grid" [rowData]="nodeRows()" [columnDefs]="colDefs" [defaultColDef]="defaultColDef" [pagination]="false" [animateRows]="true" aria-label="GPU nodes table"></ag-grid-angular>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="chart-card">
+          <ion-card-header><ion-card-title>Workload classification</ion-card-title></ion-card-header>
+          <ion-card-content>
+            <apx-chart [series]="wldSeries()" [chart]="wldChart" [labels]="wldLabels()" [colors]="wldColors" [legend]="wldLegend" [plotOptions]="wldPlotOptions" [dataLabels]="wldDataLabels" [tooltip]="wldTooltip"></apx-chart>
+          </ion-card-content>
+        </ion-card>
+      </section>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

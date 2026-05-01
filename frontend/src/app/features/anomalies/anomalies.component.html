@@ -1,0 +1,181 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- List pattern: severity-coded summary → 3 filters → bulk acknowledge → AG Grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Anomalies" subtitle="Cost anomalies detected across all providers, services, and business units">
+      <div slot="actions" class="header-actions">
+        <ion-button fill="outline" color="medium" (click)="exportCsv()" [disabled]="!hasRows()" aria-label="Export anomalies as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+      </div>
+    </app-page-header>
+
+    <!-- Summary: severity-coded counts -->
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Anomaly summary">
+        <div class="summary-stat"><div class="summary-label">Total</div><div class="summary-value">{{ s.total }}</div></div>
+        <div class="summary-stat">
+          <div class="summary-label">Critical</div>
+          <div class="summary-value" [class.summary-value-danger]="s.critical > 0">{{ s.critical }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Warning</div>
+          <div class="summary-value" [class.summary-value-warning]="s.warning > 0">{{ s.warning }}</div>
+        </div>
+        <div class="summary-stat"><div class="summary-label">Informational</div><div class="summary-value summary-value-info">{{ s.informational }}</div></div>
+        <div class="summary-stat">
+          <div class="summary-label">Unacknowledged</div>
+          <div class="summary-value" [class.summary-value-danger]="s.unacknowledged > 0">{{ s.unacknowledged }}</div>
+        </div>
+      </section>
+    }
+
+    @if (isLoading()) {
+      <app-loading-state variant="spinner" message="Loading anomalies..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state icon="alert-circle-outline" title="Unable to load anomalies" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- Filter toolbar with 3 filters: Severity, Lifecycle, Provider -->
+      <div class="filter-toolbar" role="toolbar" aria-label="Filter anomalies">
+        <div class="searchbar-wrap">
+          <ion-searchbar placeholder="Search by title or service..." debounce="300" animated="true"
+            [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search anomalies">
+          </ion-searchbar>
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter options">
+
+          <ion-button id="filter-an-severity" fill="outline" color="medium">
+            <ion-icon name="warning-outline" slot="start" aria-hidden="true"></ion-icon>
+            Severity
+            @if (severityFilter().length > 0) { <span class="filter-count">{{ severityFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-an-severity" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (s of severityOptions; track s) {
+                  <ion-item button (click)="toggleSeverityFilter(s)">
+                    <ion-checkbox slot="start" [checked]="severityFilter().includes(s)" [attr.aria-label]="'Filter by severity ' + s"></ion-checkbox>
+                    <ion-label>{{ s }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-an-lifecycle" fill="outline" color="medium">
+            <ion-icon name="reload-outline" slot="start" aria-hidden="true"></ion-icon>
+            Status
+            @if (lifecycleFilter().length > 0) { <span class="filter-count">{{ lifecycleFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-an-lifecycle" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (l of lifecycleOptions; track l) {
+                  <ion-item button (click)="toggleLifecycleFilter(l)">
+                    <ion-checkbox slot="start" [checked]="lifecycleFilter().includes(l)" [attr.aria-label]="'Filter by lifecycle ' + l"></ion-checkbox>
+                    <ion-label>{{ l.replace('_', ' ') }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          <ion-button id="filter-an-provider" fill="outline" color="medium">
+            <ion-icon name="cloud-outline" slot="start" aria-hidden="true"></ion-icon>
+            Provider
+            @if (providerFilter().length > 0) { <span class="filter-count">{{ providerFilter().length }}</span> }
+          </ion-button>
+          <ion-popover trigger="filter-an-provider" [dismissOnSelect]="false" [showBackdrop]="false">
+            <ng-template>
+              <ion-list class="filter-popover-list">
+                @for (p of providerOptions; track p) {
+                  <ion-item button (click)="toggleProviderFilter(p)">
+                    <ion-checkbox slot="start" [checked]="providerFilter().includes(p)" [attr.aria-label]="'Filter by provider ' + p"></ion-checkbox>
+                    <ion-label>{{ p }}</ion-label>
+                  </ion-item>
+                }
+              </ion-list>
+            </ng-template>
+          </ion-popover>
+
+          @if (hasActiveFilters()) {
+            <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear all filters">Clear all</ion-button>
+          }
+        </div>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <div class="active-chips" role="group" aria-label="Active filters">
+          @for (s of severityFilter(); track s) {
+            <ion-chip (click)="toggleSeverityFilter(s)" [attr.aria-label]="'Remove filter ' + s">
+              <ion-label>{{ s }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (l of lifecycleFilter(); track l) {
+            <ion-chip (click)="toggleLifecycleFilter(l)" [attr.aria-label]="'Remove filter ' + l">
+              <ion-label>{{ l.replace('_', ' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+          @for (p of providerFilter(); track p) {
+            <ion-chip (click)="toggleProviderFilter(p)" [attr.aria-label]="'Remove provider filter ' + p">
+              <ion-label>{{ p }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-chip>
+          }
+        </div>
+      }
+
+      <!-- Bulk action bar -->
+      @if (hasSelection()) {
+        <div class="bulk-action-bar" role="toolbar" aria-label="Bulk actions">
+          <span class="bulk-count" aria-live="polite">{{ selectionCount() }} selected</span>
+          <div class="bulk-actions">
+            <ion-button fill="outline" color="warning" size="small" (click)="bulkAcknowledge()">
+              <ion-icon name="checkmark-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+              Acknowledge
+            </ion-button>
+          </div>
+        </div>
+      }
+
+      <!-- AG Grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title class="grid-title">{{ total() | number }} anomal{{ total() !== 1 ? 'ies' : 'y' }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (hasRows()) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="rows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="true"
+              [paginationPageSize]="20"
+              [paginationPageSizeSelector]="[10, 20, 50, 100]"
+              [animateRows]="true"
+              [rowSelection]="'multiple'"
+              [suppressRowClickSelection]="true"
+              (gridReady)="onGridReady($event)"
+              (rowClicked)="onRowClicked($event)"
+              (selectionChanged)="onSelectionChanged($event)"
+              aria-label="Anomalies table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state
+              icon="checkmark-circle-outline"
+              title="No anomalies match your filters"
+              description="Your cost patterns look clean, or try adjusting your filters."
+              [action]="{ label: 'Clear filters', handler: clearFilters }">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

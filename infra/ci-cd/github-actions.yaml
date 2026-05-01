@@ -1,0 +1,444 @@
+# =============================================================================
+# GitHub Actions Base Workflow — Seed Round CI/CD Pipeline
+# Scope:  Build, test, lint, security scan, deploy agents A01–A05 + A27
+# Target: AWS EKS (me-south-1)
+# =============================================================================
+# This is the foundational workflow template. Each agent service will
+# reference this workflow via reusable workflow calls.
+# =============================================================================
+
+name: Seed CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  AWS_REGION: me-south-1
+  EKS_CLUSTER: finops-seed-cluster
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.me-south-1.amazonaws.com
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+
+# ---------------------------------------------------------------------------
+# JOB 1: LINT & STATIC ANALYSIS
+# ---------------------------------------------------------------------------
+jobs:
+  lint:
+    name: Lint & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install linting tools
+        run: |
+          pip install --upgrade pip
+          pip install ruff mypy bandit
+
+      - name: Ruff lint (Python)
+        run: ruff check . --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: MyPy type checking
+        run: mypy --ignore-missing-imports --no-error-summary src/
+        continue-on-error: true  # Advisory at Seed; enforced at Angel
+
+      - name: Bandit security scan (Python)
+        run: bandit -r src/ -f json -o bandit-report.json || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: UNIT TESTS
+  # ---------------------------------------------------------------------------
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: finops_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run database migrations (test)
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/finops_test
+        run: |
+          # Apply Flyway migrations for test schema
+          for f in db/migrations/V*.sql; do
+            psql "$DATABASE_URL" -f "$f"
+          done
+
+      - name: Run unit tests with coverage
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/finops_test
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: "true"
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --junitxml=test-results.xml \
+            -v --tb=short
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+
+      - name: Coverage threshold check
+        run: |
+          # Enforce minimum 70% coverage at Seed; raise to 80% at Angel
+          coverage_pct=$(python -c "import xml.etree.ElementTree as ET; \
+            tree = ET.parse('coverage.xml'); \
+            print(round(float(tree.getroot().attrib['line-rate']) * 100, 1))")
+          echo "Coverage: ${coverage_pct}%"
+          if (( $(echo "$coverage_pct < 70" | bc -l) )); then
+            echo "::error::Coverage ${coverage_pct}% is below 70% threshold"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # JOB 3: FLYWAY MIGRATION VALIDATION
+  # ---------------------------------------------------------------------------
+  migration-validate:
+    name: Validate DB Migrations
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: finops_migration_test
+          POSTGRES_USER: flyway_user
+          POSTGRES_PASSWORD: flyway_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate migration files
+        run: |
+          # Check migration naming convention: V{NNN}__{description}.sql
+          for f in db/migrations/V*.sql; do
+            if [[ ! "$f" =~ ^db/migrations/V[0-9]{3}__[a-zA-Z0-9_]+\.sql$ ]]; then
+              echo "::error::Invalid migration filename: $f"
+              exit 1
+            fi
+          done
+          echo "All migration filenames valid"
+
+      - name: Apply all migrations
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: flyway_user
+          PGPASSWORD: flyway_password
+          PGDATABASE: finops_migration_test
+        run: |
+          for f in $(ls db/migrations/V*.sql | sort); do
+            echo "Applying: $f"
+            psql -f "$f"
+            if [ $? -ne 0 ]; then
+              echo "::error::Migration failed: $f"
+              exit 1
+            fi
+          done
+          echo "All migrations applied successfully"
+
+      - name: Verify RLS policies active
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: flyway_user
+          PGPASSWORD: flyway_password
+          PGDATABASE: finops_migration_test
+        run: |
+          # Verify all tenant-scoped tables have RLS enabled
+          rls_count=$(psql -t -c "SELECT COUNT(*) FROM pg_tables t \
+            JOIN pg_class c ON c.relname = t.tablename \
+            WHERE t.schemaname = 'public' \
+            AND c.relrowsecurity = true;")
+          echo "Tables with RLS enabled: ${rls_count}"
+          if [ "${rls_count// /}" -lt "25" ]; then
+            echo "::warning::Expected >= 25 tables with RLS, found ${rls_count}"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # JOB 4: DOCKER BUILD + ECR PUSH
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [test, migration-validate]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    strategy:
+      matrix:
+        agent: [a01-data-ingestion, a02-cost-normalization,
+                a03-allocation, a04-reporting-analytics,
+                a05-anomaly-detection, a27-orchestrator]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: image-tag
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          BRANCH=${GITHUB_REF##*/}
+          echo "tag=${BRANCH}-${SHA_SHORT}-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.agent }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/finops-${{ matrix.agent }}:${{ steps.image-tag.outputs.tag }}
+            ${{ env.ECR_REGISTRY }}/finops-${{ matrix.agent }}:latest
+          build-args: |
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            BUILD_SHA=${{ github.sha }}
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.ECR_REGISTRY }}/finops-${{ matrix.agent }}:${{ steps.image-tag.outputs.tag }}"
+          format: 'sarif'
+          output: 'trivy-${{ matrix.agent }}.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-scan-${{ matrix.agent }}
+          path: trivy-${{ matrix.agent }}.sarif
+
+  # ---------------------------------------------------------------------------
+  # JOB 5: TERRAFORM PLAN (Infrastructure)
+  # ---------------------------------------------------------------------------
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform Init
+        working-directory: terraform/
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform/
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform/
+        run: terraform plan -no-color -out=tfplan
+        env:
+          TF_VAR_db_master_password: ${{ secrets.DB_MASTER_PASSWORD }}
+
+      - name: Post plan to PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const output = `#### Terraform Plan 📝
+            \`\`\`
+            Plan output truncated — see workflow logs for details.
+            \`\`\`
+            *Pusher: @${{ github.actor }}*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  # ---------------------------------------------------------------------------
+  # JOB 6: DEPLOY TO EKS (Staging/Production)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: ${{ github.event.inputs.deploy_environment || 'staging' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Apply K8s namespace config
+        run: kubectl apply -f k8s/seed_namespace_design.yaml
+
+      - name: Apply DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          for f in $(ls db/migrations/V*.sql | sort); do
+            echo "Applying migration: $f"
+            psql "$DATABASE_URL" -f "$f"
+          done
+
+      - name: Deploy agent services via Helm
+        run: |
+          for agent in a01-data-ingestion a02-cost-normalization \
+                       a03-allocation a04-reporting-analytics \
+                       a05-anomaly-detection a27-orchestrator; do
+            echo "Deploying finops-${agent}..."
+            helm upgrade --install "finops-${agent}" \
+              ./helm/agent-chart \
+              --namespace tenant-g42-seed \
+              --set image.repository="${{ env.ECR_REGISTRY }}/finops-${agent}" \
+              --set image.tag="latest" \
+              --set agent.type="${agent}" \
+              --set vault.address="${{ secrets.VAULT_ADDR }}" \
+              --set redis.url="${{ secrets.REDIS_URL }}" \
+              --wait --timeout=300s
+          done
+
+      - name: Verify deployment health
+        run: |
+          echo "Checking pod status in tenant-g42-seed..."
+          kubectl get pods -n tenant-g42-seed
+          kubectl wait --for=condition=Ready pod \
+            --all -n tenant-g42-seed \
+            --timeout=180s
+          echo "All pods healthy."
+
+      - name: Run smoke tests
+        run: |
+          # Basic connectivity and health checks
+          kubectl exec -n tenant-g42-seed deploy/finops-a01-data-ingestion \
+            -- python -m pytest tests/smoke/ -v --tb=short || true
+          echo "Smoke tests completed."

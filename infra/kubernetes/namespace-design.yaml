@@ -1,0 +1,339 @@
+# =============================================================================
+# Kubernetes Namespace Design — Seed Round (Single-Tenant)
+# Scope:  Agents A01–A05 + A27 Skeleton + Platform Services
+# Cluster: AWS EKS 1.29, 3-AZ HA
+# =============================================================================
+# At Seed, a single tenant (G42) runs in a dedicated namespace.
+# The namespace naming convention is Angel-ready: tenant-{tenant_id}.
+# Platform services run in shared namespaces that persist across rounds.
+# =============================================================================
+
+apiVersion: v1
+kind: List
+items:
+
+  # -------------------------------------------------------------------------
+  # NAMESPACE: finops-platform
+  # Purpose:  Core platform services (Airflow, Vault agent, monitoring)
+  # -------------------------------------------------------------------------
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: finops-platform
+      labels:
+        app.kubernetes.io/part-of: finops
+        finops.io/layer: platform
+        finops.io/stage: seed
+      annotations:
+        description: "Core platform services — Airflow, API Gateway, shared utilities"
+
+  # -------------------------------------------------------------------------
+  # NAMESPACE: finops-monitoring
+  # Purpose:  Prometheus, Grafana, alerting
+  # -------------------------------------------------------------------------
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: finops-monitoring
+      labels:
+        app.kubernetes.io/part-of: finops
+        finops.io/layer: observability
+        finops.io/stage: seed
+      annotations:
+        description: "Observability stack — Prometheus, Grafana, AlertManager"
+
+  # -------------------------------------------------------------------------
+  # NAMESPACE: finops-data
+  # Purpose:  ClickHouse (self-managed), data pipeline workers
+  # -------------------------------------------------------------------------
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: finops-data
+      labels:
+        app.kubernetes.io/part-of: finops
+        finops.io/layer: data
+        finops.io/stage: seed
+      annotations:
+        description: "Analytical data layer — ClickHouse single-node, dbt runners"
+
+  # -------------------------------------------------------------------------
+  # NAMESPACE: tenant-{tenant_id}  (G42 anchor tenant)
+  # Purpose:  Tenant-scoped agent pods, all A01–A05 + A27
+  # Migration: At Angel, each new tenant gets a namespace via this pattern.
+  # -------------------------------------------------------------------------
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: tenant-g42-seed
+      labels:
+        app.kubernetes.io/part-of: finops
+        finops.io/layer: tenant
+        finops.io/stage: seed
+        finops.io/tenant-id: "g42-seed"
+      annotations:
+        description: "G42 anchor tenant — agents A01-A05, A27 skeleton"
+        finops.io/tenant-name: "G42"
+        finops.io/vault-mount: "secret/tenants/g42-seed"
+        finops.io/s3-prefix: "tenants/g42-seed/"
+
+---
+# =============================================================================
+# RESOURCE QUOTAS — Per Namespace
+# =============================================================================
+
+# --- Platform namespace quota ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: platform-quota
+  namespace: finops-platform
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: "16Gi"
+    limits.cpu: "16"
+    limits.memory: "32Gi"
+    pods: "50"
+    persistentvolumeclaims: "10"
+
+---
+# --- Monitoring namespace quota ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: monitoring-quota
+  namespace: finops-monitoring
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    pods: "20"
+
+---
+# --- Data namespace quota ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: data-quota
+  namespace: finops-data
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: "16Gi"
+    limits.cpu: "8"
+    limits.memory: "32Gi"
+    pods: "10"
+    persistentvolumeclaims: "5"
+
+---
+# --- Tenant namespace quota (template for all tenants) ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: tenant-g42-seed
+spec:
+  hard:
+    requests.cpu: "12"
+    requests.memory: "24Gi"
+    limits.cpu: "24"
+    limits.memory: "48Gi"
+    pods: "60"
+    persistentvolumeclaims: "5"
+
+---
+# =============================================================================
+# LIMIT RANGES — Default pod resource boundaries
+# =============================================================================
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-limits
+  namespace: tenant-g42-seed
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "4"
+        memory: "8Gi"
+
+---
+# =============================================================================
+# NETWORK POLICIES — Tenant Isolation (Default Deny + Allow List)
+# =============================================================================
+
+# Default deny all ingress to tenant namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: tenant-g42-seed
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Allow agent-to-agent within same tenant namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-tenant
+  namespace: tenant-g42-seed
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}  # Same namespace only
+
+---
+# Allow agents → PostgreSQL (RDS via private subnet)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-rds-egress
+  namespace: tenant-g42-seed
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 5432
+          protocol: TCP
+
+---
+# Allow agents → Redis (ElastiCache via private subnet)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-egress
+  namespace: tenant-g42-seed
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 6379
+          protocol: TCP
+
+---
+# Allow agents → Vault
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vault-egress
+  namespace: tenant-g42-seed
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 8200
+          protocol: TCP
+
+---
+# Allow DNS resolution
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: tenant-g42-seed
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+
+---
+# =============================================================================
+# SERVICE ACCOUNTS — Per Agent Type (maps to Vault auth)
+# =============================================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-a01-sa
+  namespace: tenant-g42-seed
+  labels:
+    finops.io/agent-type: A01
+  annotations:
+    finops.io/vault-role: "agent-a01"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-a02-sa
+  namespace: tenant-g42-seed
+  labels:
+    finops.io/agent-type: A02
+  annotations:
+    finops.io/vault-role: "agent-a02"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-a03-sa
+  namespace: tenant-g42-seed
+  labels:
+    finops.io/agent-type: A03
+  annotations:
+    finops.io/vault-role: "agent-a03"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-a04-sa
+  namespace: tenant-g42-seed
+  labels:
+    finops.io/agent-type: A04
+  annotations:
+    finops.io/vault-role: "agent-a04"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-a05-sa
+  namespace: tenant-g42-seed
+  labels:
+    finops.io/agent-type: A05
+  annotations:
+    finops.io/vault-role: "agent-a05"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-a27-sa
+  namespace: tenant-g42-seed
+  labels:
+    finops.io/agent-type: A27
+  annotations:
+    finops.io/vault-role: "agent-a27"

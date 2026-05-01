@@ -1,0 +1,305 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<!-- List pattern per 02_Component_Pattern_Library.md §3.2                   -->
+<!-- PageHeader → (summary row) → Filter/Search toolbar → AG Grid → footer   -->
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<ion-content>
+  <div class="page-container">
+
+    <!-- ── PageHeader with primary CTA ─────────────────────────────────── -->
+    <app-page-header
+      title="Tenant Management"
+      subtitle="All tenants provisioned on the platform">
+      <div slot="actions" class="header-actions">
+        <ion-button
+          fill="outline"
+          color="medium"
+          (click)="exportCsv()"
+          [disabled]="!hasRows()"
+          aria-label="Export tenants as CSV">
+          <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+          Export
+        </ion-button>
+        @if (canCreateTenant()) {
+          <ion-button
+            fill="solid"
+            color="primary"
+            (click)="createTenant()">
+            <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+            Add tenant
+          </ion-button>
+        }
+      </div>
+    </app-page-header>
+
+    <!-- ── Summary stat row ─────────────────────────────────────────────── -->
+    @if (summary(); as s) {
+      <section class="summary-row" aria-label="Platform tenant summary">
+        <div class="summary-stat">
+          <div class="summary-label">Total tenants</div>
+          <div class="summary-value">{{ s.totalTenants | number }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Active</div>
+          <div class="summary-value summary-value-success">{{ s.activeTenants | number }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Onboarding</div>
+          <div class="summary-value summary-value-info">{{ s.onboardingTenants | number }}</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">Degraded / suspended</div>
+          <div class="summary-value" [class.summary-value-warning]="s.degradedOrSuspended > 0">
+            {{ s.degradedOrSuspended | number }}
+          </div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-label">FP this month</div>
+          <div class="summary-value">{{ s.totalMonthlyFp | number }}</div>
+        </div>
+      </section>
+    }
+
+    <!-- ── Filter / Search Toolbar ──────────────────────────────────────── -->
+    <div class="filter-toolbar" role="toolbar" aria-label="Filter tenants">
+
+      <div class="searchbar-wrap">
+        <ion-searchbar
+          placeholder="Search by name or code..."
+          debounce="300"
+          animated="true"
+          [value]="searchText()"
+          (ionInput)="onSearchChange($any($event.detail.value))"
+          aria-label="Search tenants">
+        </ion-searchbar>
+      </div>
+
+      <div class="filter-chips" role="group" aria-label="Filter chips">
+
+        <ion-button
+          id="filter-status"
+          fill="outline"
+          color="medium"
+          size="default">
+          <ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>
+          Status
+          @if (statusFilter().length > 0) {
+            <span class="filter-count" aria-label="active filters">{{ statusFilter().length }}</span>
+          }
+        </ion-button>
+        <ion-popover trigger="filter-status" [dismissOnSelect]="false" [showBackdrop]="false">
+          <ng-template>
+            <ion-list class="filter-popover-list">
+              @for (s of statusOptions; track s) {
+                <ion-item button (click)="toggleStatusFilter(s)">
+                  <ion-checkbox
+                    slot="start"
+                    [checked]="statusFilter().includes(s)"
+                    aria-label="Filter by status {{ s }}">
+                  </ion-checkbox>
+                  <ion-label>{{ s }}</ion-label>
+                </ion-item>
+              }
+            </ion-list>
+          </ng-template>
+        </ion-popover>
+
+        <ion-button
+          id="filter-tier"
+          fill="outline"
+          color="medium"
+          size="default">
+          <ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>
+          Tier
+          @if (tierFilter().length > 0) {
+            <span class="filter-count">{{ tierFilter().length }}</span>
+          }
+        </ion-button>
+        <ion-popover trigger="filter-tier" [dismissOnSelect]="false" [showBackdrop]="false">
+          <ng-template>
+            <ion-list class="filter-popover-list">
+              @for (t of tierOptions; track t) {
+                <ion-item button (click)="toggleTierFilter(t)">
+                  <ion-checkbox
+                    slot="start"
+                    [checked]="tierFilter().includes(t)"
+                    aria-label="Filter by tier {{ t }}">
+                  </ion-checkbox>
+                  <ion-label>{{ t | titlecase }}</ion-label>
+                </ion-item>
+              }
+            </ion-list>
+          </ng-template>
+        </ion-popover>
+
+        <ion-button
+          id="filter-region"
+          fill="outline"
+          color="medium"
+          size="default">
+          <ion-icon name="earth-outline" slot="start" aria-hidden="true"></ion-icon>
+          Region
+          @if (regionFilter().length > 0) {
+            <span class="filter-count">{{ regionFilter().length }}</span>
+          }
+        </ion-button>
+        <ion-popover trigger="filter-region" [dismissOnSelect]="false" [showBackdrop]="false">
+          <ng-template>
+            <ion-list class="filter-popover-list">
+              @for (r of regionOptions; track r) {
+                <ion-item button (click)="toggleRegionFilter(r)">
+                  <ion-checkbox
+                    slot="start"
+                    [checked]="regionFilter().includes(r)"
+                    aria-label="Filter by region {{ r }}">
+                  </ion-checkbox>
+                  <ion-label>{{ r }}</ion-label>
+                </ion-item>
+              }
+            </ion-list>
+          </ng-template>
+        </ion-popover>
+
+        @if (hasActiveFilters()) {
+          <ion-button
+            fill="clear"
+            color="primary"
+            size="default"
+            (click)="clearAllFilters()">
+            <ion-icon name="close-outline" slot="start" aria-hidden="true"></ion-icon>
+            Clear all
+          </ion-button>
+        }
+      </div>
+
+    </div>
+
+    <!-- ── Active filter chips (visible confirmation of applied filters) ── -->
+    @if (hasActiveFilters()) {
+      <div class="active-chips" aria-label="Active filters">
+        @for (s of statusFilter(); track s) {
+          <ion-chip (click)="toggleStatusFilter(s)" [outline]="true">
+            <ion-label>Status: {{ s }}</ion-label>
+            <ion-icon name="close-circle" aria-label="Remove filter"></ion-icon>
+          </ion-chip>
+        }
+        @for (t of tierFilter(); track t) {
+          <ion-chip (click)="toggleTierFilter(t)" [outline]="true">
+            <ion-label>Tier: {{ t | titlecase }}</ion-label>
+            <ion-icon name="close-circle" aria-label="Remove filter"></ion-icon>
+          </ion-chip>
+        }
+        @for (r of regionFilter(); track r) {
+          <ion-chip (click)="toggleRegionFilter(r)" [outline]="true">
+            <ion-label>Region: {{ r }}</ion-label>
+            <ion-icon name="close-circle" aria-label="Remove filter"></ion-icon>
+          </ion-chip>
+        }
+      </div>
+    }
+
+    <!-- ── Bulk action bar (shown when rows are selected) ───────────────── -->
+    @if (hasSelection()) {
+      <div class="bulk-action-bar" role="toolbar" aria-label="Bulk actions">
+        <div class="bulk-count">
+          <strong>{{ selectionCount() }}</strong>
+          selected
+        </div>
+        <div class="bulk-actions">
+          @if (canBulkSuspend()) {
+            <ion-button
+              fill="outline"
+              color="warning"
+              size="default"
+              (click)="runBulkAction('Suspend')">
+              <ion-icon name="pause-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+              Suspend
+            </ion-button>
+          }
+          <ion-button
+            fill="outline"
+            color="medium"
+            size="default"
+            (click)="runBulkAction('Export')">
+            <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+            Export selection
+          </ion-button>
+          @if (canBulkArchive()) {
+            <ion-button
+              fill="outline"
+              color="danger"
+              size="default"
+              (click)="runBulkAction('Archive')">
+              <ion-icon name="archive-outline" slot="start" aria-hidden="true"></ion-icon>
+              Archive
+            </ion-button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── Main content: loading / error / empty / grid ─────────────────── -->
+    <ion-card class="grid-card">
+      <ion-card-content class="grid-card-content">
+
+        @if (isLoading()) {
+          <app-loading-state
+            variant="skeleton"
+            message="Loading tenants...">
+          </app-loading-state>
+        }
+
+        @else if (loadError()) {
+          <app-empty-state
+            icon="alert-circle-outline"
+            title="Unable to load tenants"
+            [description]="loadError()!"
+            [action]="{ label: 'Retry', handler: retry }">
+          </app-empty-state>
+        }
+
+        @else if (hasData() && !hasRows() && !hasActiveFilters()) {
+          <app-empty-state
+            icon="business-outline"
+            title="No tenants yet"
+            description="Provision your first tenant to get started."
+            [action]="canCreateTenant()
+              ? { label: 'Add tenant', handler: createTenant.bind(this) }
+              : undefined">
+          </app-empty-state>
+        }
+
+        @else if (hasData() && !hasRows() && hasActiveFilters()) {
+          <app-empty-state
+            icon="search-outline"
+            title="No tenants match your filters"
+            description="Try adjusting or clearing your filters."
+            [action]="{ label: 'Clear filters', handler: clearAllFilters.bind(this) }">
+          </app-empty-state>
+        }
+
+        @else {
+          <ag-grid-angular
+            class="ag-theme-quartz tenants-grid"
+            [rowData]="rows()"
+            [columnDefs]="colDefs"
+            [defaultColDef]="defaultColDef"
+            [pagination]="true"
+            [paginationPageSize]="pageSize()"
+            [paginationPageSizeSelector]="[10, 20, 50, 100]"
+            [animateRows]="true"
+            rowSelection="multiple"
+            [suppressRowClickSelection]="true"
+            (gridReady)="onGridReady($event)"
+            (rowClicked)="onRowClicked($event)"
+            (selectionChanged)="onSelectionChanged($event)">
+          </ag-grid-angular>
+        }
+
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+</ion-content>

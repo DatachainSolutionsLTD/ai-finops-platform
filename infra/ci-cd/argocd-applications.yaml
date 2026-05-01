@@ -1,0 +1,286 @@
+# =============================================================================
+# ArgoCD Application Definitions — Seed Round GitOps Deployment
+# Scope: 6 agent services + Airflow + platform infrastructure
+# Pattern: App-of-Apps — one parent Application manages all children
+# Repo: github.com/finops-platform/deployments (GitOps source of truth)
+# =============================================================================
+# Exit Criteria: CI/CD deploying to production; monitoring live; alerts firing
+# =============================================================================
+
+---
+# ---------------------------------------------------------------------------
+# APP-OF-APPS: Parent Application
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-seed-apps
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: finops
+    finops.io/stage: seed
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/deployments.git
+    targetRevision: main
+    path: environments/seed/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+
+---
+# ---------------------------------------------------------------------------
+# ARGOCD PROJECT: Seed environment boundary
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: finops-seed
+  namespace: argocd
+spec:
+  description: "FinOps Seed round deployment boundary"
+  sourceRepos:
+    - https://github.com/finops-platform/deployments.git
+    - https://github.com/finops-platform/helm-charts.git
+  destinations:
+    - namespace: "tenant-g42-seed"
+      server: https://kubernetes.default.svc
+    - namespace: "finops-platform"
+      server: https://kubernetes.default.svc
+    - namespace: "finops-monitoring"
+      server: https://kubernetes.default.svc
+    - namespace: "finops-data"
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota  # Managed by Terraform, not ArgoCD
+  orphanedResources:
+    warn: true
+
+---
+# ---------------------------------------------------------------------------
+# AGENT APPLICATIONS (one per agent)
+# ---------------------------------------------------------------------------
+
+# A01 — Data Ingestion Agent
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-a01-data-ingestion
+  namespace: argocd
+  labels:
+    finops.io/agent-type: A01
+    finops.io/stage: seed
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/helm-charts.git
+    targetRevision: main
+    path: charts/agent-chart
+    helm:
+      valueFiles:
+        - values-a01.yaml
+      parameters:
+        - name: image.tag
+          value: "latest"  # Overridden by CI pipeline
+        - name: global.stage
+          value: seed
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-g42-seed
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Allow HPA to manage replicas
+
+---
+# A02 — Cost Normalization Agent
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-a02-cost-normalization
+  namespace: argocd
+  labels:
+    finops.io/agent-type: A02
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/helm-charts.git
+    targetRevision: main
+    path: charts/agent-chart
+    helm:
+      valueFiles:
+        - values-a02.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-g42-seed
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+---
+# A03 — Allocation Agent
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-a03-allocation
+  namespace: argocd
+  labels:
+    finops.io/agent-type: A03
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/helm-charts.git
+    targetRevision: main
+    path: charts/agent-chart
+    helm:
+      valueFiles:
+        - values-a03.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-g42-seed
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+---
+# A04 — Reporting & Analytics Agent
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-a04-reporting-analytics
+  namespace: argocd
+  labels:
+    finops.io/agent-type: A04
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/helm-charts.git
+    targetRevision: main
+    path: charts/agent-chart
+    helm:
+      valueFiles:
+        - values-a04.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-g42-seed
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+---
+# A05 — Anomaly Detection Agent
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-a05-anomaly-detection
+  namespace: argocd
+  labels:
+    finops.io/agent-type: A05
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/helm-charts.git
+    targetRevision: main
+    path: charts/agent-chart
+    helm:
+      valueFiles:
+        - values-a05.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-g42-seed
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+---
+# A27 — Orchestrator Agent
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-a27-orchestrator
+  namespace: argocd
+  labels:
+    finops.io/agent-type: A27
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/helm-charts.git
+    targetRevision: main
+    path: charts/agent-chart
+    helm:
+      valueFiles:
+        - values-a27.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-g42-seed
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+---
+# Airflow (Platform namespace)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-airflow
+  namespace: argocd
+  labels:
+    finops.io/component: airflow
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/deployments.git
+    targetRevision: main
+    path: environments/seed/airflow
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: finops-platform
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+
+---
+# Monitoring Stack (Prometheus + Grafana)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: finops-monitoring
+  namespace: argocd
+  labels:
+    finops.io/component: monitoring
+spec:
+  project: finops-seed
+  source:
+    repoURL: https://github.com/finops-platform/deployments.git
+    targetRevision: main
+    path: environments/seed/monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: finops-monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

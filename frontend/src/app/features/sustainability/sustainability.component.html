@@ -1,0 +1,175 @@
+<!-- FinOps Platform Design System v1.1 -->
+<!-- Last verified against tokens + patterns: 2026-04-13 -->
+<!-- Dashboard: PageHeader+TimeRange → KPIs → Narrative → full-width carbon trend → 2-col charts → green opps grid -->
+
+<ion-content>
+  <div class="page-container">
+
+    <app-page-header title="Sustainability" [subtitle]="subtitle()">
+      <app-time-range-selector
+        slot="actions"
+        [value]="timeRange()"
+        [options]="timeRangeOptions"
+        (valueChange)="onTimeRangeChange($event)">
+      </app-time-range-selector>
+    </app-page-header>
+
+    @if (isLoading()) {
+      <app-loading-state variant="skeleton" message="Loading sustainability data..."></app-loading-state>
+    } @else if (loadError()) {
+      <app-empty-state
+        icon="alert-circle-outline"
+        title="Unable to load sustainability data"
+        [description]="loadError()!"
+        [action]="{ label: 'Retry', handler: retry }">
+      </app-empty-state>
+    } @else if (hasData()) {
+
+      <!-- KPI Row -->
+      <section class="kpi-row" aria-label="Key sustainability metrics">
+        <app-kpi-card
+          label="Total carbon footprint"
+          [value]="kpis()!.totalCarbonKg.value | number:'1.0-0'"
+          unit="kg CO₂eq"
+          [deltaPercent]="kpis()!.totalCarbonKg.deltaPercent"
+          [deltaDirection]="kpis()!.totalCarbonKg.deltaDirection"
+          [sparklineData]="kpis()!.totalCarbonKg.sparkline"
+          [status]="kpis()!.totalCarbonKg.deltaDirection === 'down' ? 'success' : 'warning'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Carbon per transaction"
+          [value]="kpis()!.carbonPerTxn.value | number:'1.4-4'"
+          unit="kgCO2/txn"
+          [deltaPercent]="kpis()!.carbonPerTxn.deltaPercent"
+          [deltaDirection]="kpis()!.carbonPerTxn.deltaDirection"
+          [sparklineData]="kpis()!.carbonPerTxn.sparkline"
+          [status]="kpis()!.carbonPerTxn.deltaDirection === 'down' ? 'success' : 'warning'">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Green opportunities"
+          [value]="kpis()!.greenOpportunities.value | number"
+          [deltaPercent]="kpis()!.greenOpportunities.deltaPercent"
+          [deltaDirection]="kpis()!.greenOpportunities.deltaDirection"
+          [sparklineData]="kpis()!.greenOpportunities.sparkline"
+          status="neutral">
+        </app-kpi-card>
+
+        <app-kpi-card
+          label="Renewable energy mix"
+          [value]="kpis()!.renewableEnergyPct.value | number:'1.1-1'"
+          unit="%"
+          [deltaPercent]="kpis()!.renewableEnergyPct.deltaPercent"
+          [deltaDirection]="kpis()!.renewableEnergyPct.deltaDirection"
+          [sparklineData]="kpis()!.renewableEnergyPct.sparkline"
+          [status]="kpis()!.renewableEnergyPct.value >= 75 ? 'success' : kpis()!.renewableEnergyPct.value >= 50 ? 'warning' : 'danger'">
+        </app-kpi-card>
+      </section>
+
+      <!-- Narrative -->
+      @if (dashboard()?.narrative; as n) {
+        <app-narrative-block
+          [summary]="n.summary"
+          [highlights]="n.highlights"
+          [agentName]="n.agentName"
+          [generatedAt]="n.generatedAt">
+        </app-narrative-block>
+      }
+
+      <!-- Full-width carbon trend -->
+      <ion-card class="chart-card chart-card-full">
+        <ion-card-header>
+          <ion-card-title>Carbon footprint trend (kgCO₂eq)</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <apx-chart
+            [series]="carbonSeries()"
+            [chart]="carbonChart"
+            [xaxis]="carbonXAxis()"
+            [yaxis]="carbonYAxis"
+            [stroke]="carbonStroke"
+            [fill]="carbonFill"
+            [colors]="carbonColors"
+            [tooltip]="carbonTooltip"
+            [dataLabels]="carbonDataLabels"
+            [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+          </apx-chart>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- 2-col: source donut + green opportunities bar -->
+      <section class="chart-grid" aria-label="Sustainability detail charts">
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Carbon by source</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (sourceSeries().length > 0) {
+              <apx-chart
+                [series]="sourceSeries()"
+                [chart]="sourceChart"
+                [labels]="sourceLabels()"
+                [colors]="sourceColors"
+                [legend]="sourceLegend"
+                [plotOptions]="sourcePlotOptions"
+                [dataLabels]="sourceDataLabels"
+                [tooltip]="sourceTooltip">
+              </apx-chart>
+            } @else {
+              <app-empty-state icon="leaf-outline" title="No source data" description="No carbon source data available."></app-empty-state>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="chart-card">
+          <ion-card-header>
+            <ion-card-title>Green opportunity — carbon reduction potential</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <apx-chart
+              [series]="oppSeries()"
+              [chart]="oppChart"
+              [xaxis]="oppXAxis()"
+              [yaxis]="oppYAxis"
+              [plotOptions]="oppPlotOptions"
+              [colors]="oppColors"
+              [tooltip]="oppTooltip"
+              [dataLabels]="oppDataLabels"
+              [grid]="{ borderColor: 'var(--finops-border-subtle)' }">
+            </apx-chart>
+          </ion-card-content>
+        </ion-card>
+
+      </section>
+
+      <!-- Green opportunities detail grid -->
+      <ion-card class="grid-card">
+        <ion-card-header>
+          <ion-card-title>Green optimization opportunities</ion-card-title>
+        </ion-card-header>
+        <ion-card-content class="grid-content">
+          @if (oppRows().length > 0) {
+            <ag-grid-angular
+              class="ag-theme-quartz finops-grid"
+              [rowData]="oppRows()"
+              [columnDefs]="colDefs"
+              [defaultColDef]="defaultColDef"
+              [pagination]="false"
+              [animateRows]="true"
+              aria-label="Green optimization opportunities table">
+            </ag-grid-angular>
+          } @else {
+            <app-empty-state
+              icon="leaf-outline"
+              title="No green opportunities"
+              description="No actionable green optimization opportunities currently identified.">
+            </app-empty-state>
+          }
+        </ion-card-content>
+      </ion-card>
+
+    } <!-- /hasData -->
+  </div>
+</ion-content>

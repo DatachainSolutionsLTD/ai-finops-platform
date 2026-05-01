@@ -1,0 +1,51 @@
+// FinOps Platform Design System v1.1 — Notifications Detail/Edit — tokens only.
+:host { display: block; background-color: var(--finops-bg-page); }
+.page-container { max-width: 1040px; margin: 0 auto; padding: var(--finops-space-6) var(--finops-space-6) 80px; @media (min-width: 768px) { padding: var(--finops-space-8) var(--finops-space-8) 80px; } }
+
+// ── Tab nav ───────────────────────────────────────────────────────────────
+.tab-nav { display: flex; border-bottom: 2px solid var(--finops-border-default); margin-bottom: var(--finops-space-6); gap: var(--finops-space-1);
+  button { display: flex; align-items: center; gap: var(--finops-space-2); padding: var(--finops-space-3) var(--finops-space-4); background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: var(--finops-font-family); font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); color: var(--finops-text-tertiary); cursor: pointer; transition: color 0.15s, border-color 0.15s;
+    ion-icon { font-size: var(--finops-text-base); }
+    &.active { color: var(--finops-brand-primary); border-bottom-color: var(--finops-brand-primary); font-weight: var(--finops-font-semibold); }
+    &:hover:not(.active) { color: var(--finops-text-primary); }
+    &:focus-visible { outline: 2px solid var(--finops-brand-primary); outline-offset: 2px; border-radius: var(--finops-radius-sm); }
+  }
+}
+
+// ── Form card ─────────────────────────────────────────────────────────────
+.form-card { background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default); border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); margin: 0 0 var(--finops-space-6) 0;
+  ion-card-header { padding: var(--finops-space-6) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); margin: 0; }
+}
+.form-body { padding: var(--finops-space-6); }
+.form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: var(--finops-space-6); margin-bottom: var(--finops-space-6); @media (max-width: 768px) { grid-template-columns: 1fr; } }
+.form-field       { display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.form-field-wide  { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--finops-space-2); }
+.field-label { font-size: var(--finops-text-sm); font-weight: var(--finops-font-medium); color: var(--finops-text-primary); }
+.field-hint  { font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); margin: 0; }
+.readonly-val { font-family: var(--finops-font-mono); font-size: var(--finops-text-sm); color: var(--finops-text-secondary); background-color: var(--finops-bg-subtle); padding: var(--finops-space-2) var(--finops-space-3); border-radius: var(--finops-radius-md); margin: 0; }
+.toggle-row  { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--finops-space-4); }
+
+// ── Channel card ──────────────────────────────────────────────────────────
+.channel-card     { opacity: 1; transition: opacity 0.2s; &.channel-disabled { opacity: 0.55; } }
+.channel-header   { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+
+// ── Event grid ────────────────────────────────────────────────────────────
+.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--finops-space-3); margin-top: var(--finops-space-3); }
+.event-item { display: flex; align-items: center; gap: var(--finops-space-2); cursor: pointer; }
+.event-check { width: 16px; height: 16px; accent-color: var(--finops-brand-primary); cursor: pointer; flex-shrink: 0; &:focus-visible { outline: 2px solid var(--finops-brand-primary); outline-offset: 2px; } }
+.event-label { font-size: var(--finops-text-sm); color: var(--finops-text-primary); }
+
+// ── Sticky action footer ──────────────────────────────────────────────────
+.action-footer {
+  position: fixed; bottom: 0; left: var(--finops-sidenav-width, 240px); right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--finops-space-4) var(--finops-space-8);
+  background-color: var(--finops-bg-surface); border-top: 1px solid var(--finops-border-default);
+  box-shadow: var(--finops-shadow-lg);
+  transition: background-color 0.2s;
+  @media (max-width: 768px) { left: 0; padding: var(--finops-space-4); }
+  &.footer-dirty { background-color: var(--finops-warning-subtle); }
+}
+.footer-status  { font-size: var(--finops-text-sm); color: var(--finops-text-secondary); }
+.footer-actions { display: flex; gap: var(--finops-space-3); ion-button { --border-radius: var(--finops-radius-md); text-transform: none; letter-spacing: 0; } }
