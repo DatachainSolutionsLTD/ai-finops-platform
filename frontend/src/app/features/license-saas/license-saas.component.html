@@ -23,9 +23,7 @@
       </section>
     }
 
-    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading license data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load licenses" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading license data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load licenses" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <div class="filter-toolbar" role="toolbar" aria-label="Filter licenses">
         <div class="searchbar-wrap">
@@ -43,7 +41,7 @@
                 @for (c of complianceOptions; track c) {
                   <ion-item button (click)="toggleComplianceFilter(c)">
                     <ion-checkbox slot="start" [checked]="complianceFilter().includes(c)" [attr.aria-label]="'Filter ' + c"></ion-checkbox>
-                    <ion-label>{{ c.replace(/_/g,' ') }}</ion-label>
+                    <ion-label>{{ c.split('_').join(' ') }}</ion-label>
                   </ion-item>
                 }
               </ion-list>
@@ -73,7 +71,7 @@
 
       @if (hasFilters()) {
         <div class="active-chips" role="group" aria-label="Active filters">
-          @for (c of complianceFilter(); track c) { <ion-chip (click)="toggleComplianceFilter(c)" [attr.aria-label]="'Remove ' + c"><ion-label>{{ c.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (c of complianceFilter(); track c) { <ion-chip (click)="toggleComplianceFilter(c)" [attr.aria-label]="'Remove ' + c"><ion-label>{{ c.split('_').join(' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
           @for (g of groupFilter(); track g) { <ion-chip (click)="toggleGroupFilter(g)" [attr.aria-label]="'Remove ' + g"><ion-label>{{ g.replace('_',' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
         </div>
       }

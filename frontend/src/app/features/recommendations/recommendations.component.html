@@ -86,7 +86,7 @@
                 @for (t of typeOptions; track t) {
                   <ion-item button (click)="toggleTypeFilter(t)">
                     <ion-checkbox slot="start" [checked]="typeFilter().includes(t)" [attr.aria-label]="'Filter by type ' + t"></ion-checkbox>
-                    <ion-label>{{ t.replace(/_/g, ' ') }}</ion-label>
+                    <ion-label>{{ t.split('_').join(' ') }}</ion-label>
                   </ion-item>
                 }
               </ion-list>
@@ -114,7 +114,7 @@
           }
           @for (t of typeFilter(); track t) {
             <ion-chip (click)="toggleTypeFilter(t)" [attr.aria-label]="'Remove type filter ' + t">
-              <ion-label>{{ t.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+              <ion-label>{{ t.split('_').join(' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon>
             </ion-chip>
           }
         </div>

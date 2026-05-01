@@ -17,9 +17,7 @@
       </section>
     }
 
-    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading statements..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load statements" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading statements..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load statements" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
       <div class="filter-toolbar" role="toolbar" aria-label="Filter statements">
         <div class="searchbar-wrap"><ion-searchbar placeholder="Search by period or BU..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search statements"></ion-searchbar></div>
         <div class="filter-chips" role="group">

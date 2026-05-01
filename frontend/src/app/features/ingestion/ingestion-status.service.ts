@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, delay } from 'rxjs';
 import { type IngestionStatusDashboardData } from '@shared/types/ingestion-status.types';
 import { environment } from '@env/environment';
+const CUR = 'USD';
 
 function sparks(base: number, len = 8): number[] {
   return Array.from({ length: len }, () => base + Math.round((Math.random() - 0.5) * base * 0.15));

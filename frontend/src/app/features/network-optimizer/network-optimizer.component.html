@@ -3,9 +3,7 @@
   <div class="page-container">
     <app-page-header title="Network Optimizer" [subtitle]="subtitle()"></app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading network data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading network data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <section class="kpi-row" aria-label="Key network optimization metrics">
         <app-kpi-card label="Total transfer cost" [value]="kpis()!.totalTransferCost.value | number:'1.0-0'" [unit]="kpis()!.totalTransferCost.currency" [deltaPercent]="kpis()!.totalTransferCost.deltaPercent" [deltaDirection]="kpis()!.totalTransferCost.deltaDirection" [sparklineData]="kpis()!.totalTransferCost.sparkline" status="neutral"></app-kpi-card>

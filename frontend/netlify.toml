@@ -1,5 +1,5 @@
 [build]
-  command = "echo 'Using pre-built files'"
+  command = "npm install && npx ng build --configuration production"
   publish = "dist/ai-finops/browser"
 
 [[redirects]]

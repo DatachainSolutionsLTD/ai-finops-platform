@@ -3,9 +3,7 @@
   <div class="page-container">
     <app-page-header title="FinOps Assessment" [subtitle]="subtitle()"></app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading assessment data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load assessment" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading assessment data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load assessment" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <section class="kpi-row" aria-label="Key maturity metrics">
         <app-kpi-card label="Overall maturity score" [value]="kpis()!.overallMaturityScore.value | number:'1.0-0'" unit="/100" [deltaPercent]="kpis()!.overallMaturityScore.deltaPercent" [deltaDirection]="kpis()!.overallMaturityScore.deltaDirection" [sparklineData]="kpis()!.overallMaturityScore.sparkline" [status]="kpis()!.overallMaturityScore.value >= 70 ? 'success' : kpis()!.overallMaturityScore.value >= 40 ? 'warning' : 'danger'"></app-kpi-card>

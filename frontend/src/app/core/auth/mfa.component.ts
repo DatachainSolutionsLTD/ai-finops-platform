@@ -40,7 +40,7 @@ import {
 
 import { interval, map, takeWhile } from 'rxjs';
 
-import { AuthLayoutComponent } from '../shared/auth-layout.component';
+import { AuthLayoutComponent } from './shared/auth-layout.component';
 import { AuthService } from '@core/auth/auth.service';
 
 interface MfaNavigationState {

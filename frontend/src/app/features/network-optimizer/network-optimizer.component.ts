@@ -8,7 +8,7 @@ import { Title } from '@angular/platform-browser';
 import { IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle } from '@ionic/angular/standalone';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type { ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexTooltip, ApexDataLabels, ApexPlotOptions, ApexStroke } from 'ng-apexcharts';
 import { startWith, catchError, of } from 'rxjs';
 import { PageHeaderComponent } from '@shared/components/page-header.component';
@@ -25,7 +25,7 @@ import { type NetworkDashboardData, type NetworkRecommendationRow } from '@share
   selector: 'app-network-optimizer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, AgGridAngular, ChartComponent, PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, AgGridAngular, NgApexchartsModule, PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent, LoadingStateComponent, EmptyStateComponent],
   templateUrl: './network-optimizer.component.html',
   styleUrl:    './network-optimizer.component.scss',
 })

@@ -1,0 +1,195 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// ─────────────────────────────────────────────────────────────────────────────
+
+:host {
+  display: block;
+}
+
+// Import shared auth banner + form styles from login.component.scss
+// In production, these would be extracted to a shared partial.
+.auth-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--finops-space-2);
+  padding: var(--finops-space-3) var(--finops-space-4);
+  border-radius: var(--finops-radius-md);
+  font-size: var(--finops-text-sm);
+  line-height: var(--finops-leading-relaxed);
+
+  ion-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  &.banner-info {
+    background: var(--finops-info-subtle);
+    color: var(--finops-info-dark);
+    border: 1px solid var(--finops-info);
+    ion-icon { color: var(--finops-info); }
+  }
+  &.banner-warning {
+    background: var(--finops-warning-subtle);
+    color: var(--finops-warning-dark);
+    border: 1px solid var(--finops-warning);
+    ion-icon { color: var(--finops-warning); }
+  }
+  &.banner-danger {
+    background: var(--finops-danger-subtle);
+    color: var(--finops-danger-dark);
+    border: 1px solid var(--finops-danger);
+    ion-icon { color: var(--finops-danger); }
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finops-space-5);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finops-space-2);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Large, friendly, centered code input
+.code-field {
+  align-items: stretch;
+}
+
+.code-input {
+  --padding-top: var(--finops-space-4);
+  --padding-bottom: var(--finops-space-4);
+  --padding-start: var(--finops-space-4);
+  --padding-end: var(--finops-space-4);
+  --border-color: var(--finops-border-default);
+  --border-radius: var(--finops-radius-md);
+  --highlight-color-focused: var(--finops-brand-primary);
+  --background: var(--finops-bg-surface);
+  --color: var(--finops-text-primary);
+  --placeholder-color: var(--finops-text-disabled);
+  font-family: var(--finops-font-mono);
+  font-size: var(--finops-text-2xl);
+  font-weight: var(--finops-font-semibold);
+  letter-spacing: 0.4em;
+  text-align: center;
+  min-height: 64px;
+
+  &.invalid {
+    --border-color: var(--finops-danger);
+    --highlight-color-focused: var(--finops-danger);
+  }
+}
+
+:host ::ng-deep .code-input input {
+  text-align: center !important;
+  letter-spacing: 0.4em !important;
+  font-family: var(--finops-font-mono) !important;
+}
+
+.code-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--finops-space-1);
+}
+
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--finops-space-1);
+  padding: var(--finops-space-1) var(--finops-space-3);
+  border-radius: var(--finops-radius-full);
+  background: var(--finops-bg-subtle);
+  color: var(--finops-text-secondary);
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+
+  ion-icon {
+    font-size: 14px;
+  }
+
+  &.timer-warning {
+    background: var(--finops-warning-subtle);
+    color: var(--finops-warning-dark);
+
+    ion-icon { color: var(--finops-warning); }
+  }
+}
+
+.field-error {
+  font-size: var(--finops-text-xs);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-danger);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--finops-space-1);
+
+  &::before {
+    content: '⚠';
+    font-size: 14px;
+  }
+}
+
+ion-button[type="submit"] {
+  --border-radius: var(--finops-radius-md);
+  --padding-top: var(--finops-space-3);
+  --padding-bottom: var(--finops-space-3);
+  font-family: var(--finops-font-family);
+  font-weight: var(--finops-font-semibold);
+  font-size: var(--finops-text-base);
+  text-transform: none;
+  letter-spacing: 0;
+  min-height: 48px;
+}
+
+// Auth secondary actions (back to sign in, etc.)
+.auth-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--finops-space-2);
+  border-top: 1px solid var(--finops-border-subtle);
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--finops-space-1);
+  background: transparent;
+  border: none;
+  padding: var(--finops-space-2);
+  font-family: var(--finops-font-family);
+  font-size: var(--finops-text-sm);
+  font-weight: var(--finops-font-medium);
+  color: var(--finops-brand-primary);
+  cursor: pointer;
+  border-radius: var(--finops-radius-sm);
+  transition: var(--finops-transition-default);
+
+  &:hover {
+    color: var(--finops-brand-primary-hover);
+    background: var(--finops-bg-subtle);
+  }
+
+  ion-icon {
+    font-size: 16px;
+  }
+}

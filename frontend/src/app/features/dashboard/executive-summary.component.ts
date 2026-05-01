@@ -2,6 +2,7 @@
 // Executive Summary — Dashboard. Route: /executive
 // Pattern: PageHeader → 6 KPIs → NarrativeBlock → full-width spend trend → 2-col (provider donut + top movers)
 
+import { TimeRangeSelectorComponent } from '@shared/components/time-range-selector/time-range-selector.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -10,7 +11,7 @@ import {
   IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle,
   IonButton, IonIcon,
 } from '@ionic/angular/standalone';
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexTooltip,
   ApexDataLabels, ApexStroke, ApexFill, ApexLegend,
@@ -35,9 +36,10 @@ import type { ExecutiveDashboardData, CostMover } from '@shared/types/overview.t
   imports: [
     CommonModule,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon,
-    ChartComponent,
+    NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     LoadingStateComponent, EmptyStateComponent,
+    TimeRangeSelectorComponent,
   ],
   templateUrl: './executive-summary.component.html',
   styleUrl:    './executive-summary.component.scss',
@@ -45,6 +47,8 @@ import type { ExecutiveDashboardData, CostMover } from '@shared/types/overview.t
 export class ExecutiveSummaryComponent {
   readonly #svc   = inject(ExecutiveSummaryService);
   readonly #title = inject(Title);
+  readonly subtitle = signal('Last 30 days');
+  onRangeChange(range: any) { this.subtitle.set(range?.label ?? 'Custom range'); }
   constructor() { this.#title.setTitle('Executive Summary · FinOps'); }
 
   readonly loadError = signal<string | null>(null);

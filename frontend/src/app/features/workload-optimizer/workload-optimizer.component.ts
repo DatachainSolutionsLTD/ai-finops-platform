@@ -22,7 +22,7 @@ import {
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis,
   ApexStroke, ApexTooltip, ApexDataLabels, ApexLegend, ApexPlotOptions,
@@ -53,7 +53,7 @@ const TIME_RANGE_OPTIONS: WorkloadOptTimeRange[] = ['7d', '30d', '90d'];
   imports: [
     CommonModule,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon,
-    AgGridAngular, ChartComponent,
+    AgGridAngular, NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     TimeRangeSelectorComponent, LoadingStateComponent, EmptyStateComponent,
   ],
@@ -100,7 +100,6 @@ export class WorkloadOptimizerComponent {
   });
   readonly trendXAxis = computed<ApexXAxis>(() => ({ categories: (this.dashboard()?.savingsTrend ?? []).map(p => p.period), labels: { style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } } }));
   readonly trendChart: ApexChart = { ...baseChartOptions.chart, type: 'bar', height: 280 };
-  readonly trendPlotOptions: ApexPlotOptions = { bar: { borderRadius: 3, columnWidth: '65%', groupPadding: 0.1 } };
   readonly trendColors = [CHART_PALETTE[4], CHART_PALETTE[0]];
   readonly trendTooltip: ApexTooltip = { ...baseChartOptions.tooltip, y: { formatter: (v: number) => formatCurrency(v, { code: 'AED' }) } };
   readonly trendYAxis: ApexYAxis = { labels: { formatter: (v: number) => `${(v/1_000).toFixed(0)}k`, style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } } };

@@ -249,18 +249,14 @@
             variant="skeleton"
             message="Loading tenants...">
           </app-loading-state>
-        }
-
-        @else if (loadError()) {
+        } @else if (loadError()) {
           <app-empty-state
             icon="alert-circle-outline"
             title="Unable to load tenants"
             [description]="loadError()!"
             [action]="{ label: 'Retry', handler: retry }">
           </app-empty-state>
-        }
-
-        @else if (hasData() && !hasRows() && !hasActiveFilters()) {
+        } @else if (hasData() && !hasRows() && !hasActiveFilters()) {
           <app-empty-state
             icon="business-outline"
             title="No tenants yet"
@@ -269,9 +265,7 @@
               ? { label: 'Add tenant', handler: createTenant.bind(this) }
               : undefined">
           </app-empty-state>
-        }
-
-        @else if (hasData() && !hasRows() && hasActiveFilters()) {
+        } @else if (hasData() && !hasRows() && hasActiveFilters()) {
           <app-empty-state
             icon="search-outline"
             title="No tenants match your filters"

@@ -7,9 +7,7 @@
       </div>
     </app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading tagging data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load tagging data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading tagging data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load tagging data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <section class="kpi-row" aria-label="Key tagging metrics">
         <app-kpi-card label="Overall compliance rate" [value]="kpis()!.overallComplianceRate.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.overallComplianceRate.deltaPercent" [deltaDirection]="kpis()!.overallComplianceRate.deltaDirection" [sparklineData]="kpis()!.overallComplianceRate.sparkline" [status]="kpis()!.overallComplianceRate.value >= 90 ? 'success' : kpis()!.overallComplianceRate.value >= 70 ? 'warning' : 'danger'"></app-kpi-card>

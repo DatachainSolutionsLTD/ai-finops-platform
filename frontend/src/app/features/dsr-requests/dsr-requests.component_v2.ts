@@ -23,7 +23,7 @@ import { type DsrRequestRow, type DsrRequestType, type DsrRequestStatus, DSR_TYP
 @Component({
   selector: 'app-dsr-requests',
   standalone: true, changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent SummaryStatRowComponent, GridShellCardComponent,],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent, SummaryStatRowComponent, GridShellCardComponent,],
   templateUrl: './dsr-requests.component.html',
   styleUrl:    './dsr-requests.component.scss',
 })

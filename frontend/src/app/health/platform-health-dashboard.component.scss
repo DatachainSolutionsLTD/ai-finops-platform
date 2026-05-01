@@ -1,0 +1,215 @@
+// FinOps Platform Design System v1.1
+// Last verified against tokens + patterns: 2026-04-13
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform Health Dashboard — component styles.
+// All values reference CSS variables from finops_tokens.scss.
+// No hardcoded colors, sizes, or spacing anywhere.
+// ─────────────────────────────────────────────────────────────────────────────
+
+:host {
+  display: block;
+  background-color: var(--finops-bg-page);
+}
+
+.page-container {
+  max-width: var(--finops-content-max-width);
+  margin: 0 auto;
+  padding: var(--finops-space-6);
+
+  @media (min-width: 768px) {
+    padding: var(--finops-space-8);
+  }
+}
+
+// ── KPI Row ──────────────────────────────────────────────────────────────
+.kpi-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--finops-space-4);
+  margin-bottom: var(--finops-space-6);
+
+  @media (min-width: 576px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 992px) {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--finops-space-6);
+  }
+}
+
+// ── Narrative spacing ────────────────────────────────────────────────────
+app-narrative-block {
+  display: block;
+  margin-bottom: var(--finops-space-6);
+}
+
+// ── Chart Grid ───────────────────────────────────────────────────────────
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--finops-space-6);
+  margin-bottom: var(--finops-space-8);
+
+  @media (min-width: 992px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.chart-card {
+  margin: 0;
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+
+  ion-card-header {
+    padding: var(--finops-space-6) var(--finops-space-6) 0;
+  }
+
+  ion-card-title {
+    font-family: var(--finops-font-family);
+    font-size: var(--finops-text-lg);
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-primary);
+    margin: 0;
+  }
+
+  ion-card-content {
+    padding: var(--finops-space-4) var(--finops-space-6) var(--finops-space-6);
+  }
+}
+
+// SLO breakdown list below the radial chart
+.slo-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--finops-space-3) var(--finops-space-4);
+  margin: var(--finops-space-4) 0 0;
+  padding-top: var(--finops-space-4);
+  border-top: 1px solid var(--finops-border-subtle);
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  dt {
+    font-size: var(--finops-text-sm);
+    color: var(--finops-text-secondary);
+    margin: 0;
+  }
+
+  dd {
+    font-size: var(--finops-text-sm);
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-primary);
+    margin: 0;
+  }
+}
+
+// ── Tenants Grid Card ────────────────────────────────────────────────────
+.tenants-card {
+  margin: 0;
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  box-shadow: var(--finops-shadow-sm);
+
+  ion-card-header {
+    padding: var(--finops-space-6) var(--finops-space-6) 0;
+  }
+
+  ion-card-title {
+    font-family: var(--finops-font-family);
+    font-size: var(--finops-text-lg);
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-primary);
+    margin: 0;
+  }
+
+  ion-card-content {
+    padding: var(--finops-space-4) var(--finops-space-6) var(--finops-space-6);
+  }
+}
+
+.grid-toolbar {
+  --background: transparent;
+  --padding-start: 0;
+  --padding-end: 0;
+  --min-height: auto;
+  margin-bottom: var(--finops-space-4);
+
+  ion-searchbar {
+    --background: var(--finops-bg-subtle);
+    --color: var(--finops-text-primary);
+    --placeholder-color: var(--finops-text-tertiary);
+    --border-radius: var(--finops-radius-md);
+    --box-shadow: none;
+    padding: 0;
+    max-width: 400px;
+  }
+
+  ion-button {
+    --border-radius: var(--finops-radius-md);
+    font-family: var(--finops-font-family);
+    font-weight: var(--finops-font-medium);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
+.tenants-grid {
+  width: 100%;
+  min-height: 480px;
+  height: calc(100vh - 720px);
+}
+
+// ── AG Grid cell customizations (scoped via ::ng-deep to pierce shadow) ──
+::ng-deep .tenants-grid {
+  .tenant-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: var(--finops-leading-tight);
+    padding: var(--finops-space-1) 0;
+  }
+
+  .tenant-name {
+    font-weight: var(--finops-font-semibold);
+    color: var(--finops-text-primary);
+    font-size: var(--finops-text-sm);
+  }
+
+  .tenant-code {
+    font-size: var(--finops-text-xs);
+    color: var(--finops-text-tertiary);
+    font-family: var(--finops-font-mono);
+    margin-top: var(--finops-space-1);
+  }
+
+  .critical-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 var(--finops-space-2);
+    border-radius: var(--finops-radius-full);
+    background-color: var(--finops-danger-subtle);
+    color: var(--finops-danger-dark);
+    font-size: var(--finops-text-xs);
+    font-weight: var(--finops-font-semibold);
+  }
+
+  .critical-zero {
+    color: var(--finops-text-tertiary);
+    font-size: var(--finops-text-sm);
+  }
+
+  // Row click affordance
+  .ag-row-hover {
+    cursor: pointer;
+  }
+}

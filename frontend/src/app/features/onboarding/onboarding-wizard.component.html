@@ -37,18 +37,14 @@
         variant="skeleton"
         message="Loading onboarding draft...">
       </app-loading-state>
-    }
-
-    @else if (loadError()) {
+    } @else if (loadError()) {
       <app-empty-state
         icon="alert-circle-outline"
         title="Unable to load onboarding"
         [description]="loadError()!"
         [action]="{ label: 'Retry', handler: retry }">
       </app-empty-state>
-    }
-
-    @else if (draft()) {
+    } @else if (draft()) {
 
       <!-- ── WizardStepper ─────────────────────────────────────────────── -->
       <nav class="wizard-stepper" role="navigation" aria-label="Onboarding steps">
@@ -140,7 +136,7 @@
                   </ion-input>
                   @if (fieldError('organization.tenantCode'); as err) {
                     <div class="field-error">{{ err }}</div>
-                  } @else if (codeCheck(); as cc) {
+                  } @if (codeCheck(); as cc) {
                     @if (cc.available) {
                       <div class="field-hint field-hint-success">
                         <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>

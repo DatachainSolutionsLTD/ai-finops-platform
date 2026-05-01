@@ -7,7 +7,7 @@ import { Title } from '@angular/platform-browser';
 import { IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon } from '@ionic/angular/standalone';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type { ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexTooltip, ApexDataLabels, ApexLegend, ApexPlotOptions } from 'ng-apexcharts';
 import { startWith, catchError, of } from 'rxjs';
 import { PageHeaderComponent } from '@shared/components/page-header.component';
@@ -23,7 +23,7 @@ import { type BillingDashboardData, type BillingInvoiceRow } from '@shared/types
   selector: 'app-billing',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon, AgGridAngular, ChartComponent, PageHeaderComponent, KpiCardComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon, AgGridAngular, NgApexchartsModule, PageHeaderComponent, KpiCardComponent, LoadingStateComponent, EmptyStateComponent],
   templateUrl: './billing.component.html',
   styleUrl:    './billing.component.scss',
 })

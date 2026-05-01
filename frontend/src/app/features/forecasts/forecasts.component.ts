@@ -29,7 +29,7 @@ import {
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis,
   ApexStroke, ApexFill, ApexTooltip, ApexDataLabels,
@@ -66,7 +66,7 @@ import {
     CommonModule,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle,
     IonButton, IonIcon, IonSelect, IonSelectOption,
-    AgGridAngular, ChartComponent,
+    AgGridAngular, NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     TimeRangeSelectorComponent, LoadingStateComponent, EmptyStateComponent,
   ],
@@ -146,7 +146,6 @@ export class ForecastsComponent {
     labels: { style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } },
   }));
   readonly budgetChart: ApexChart = { ...baseChartOptions.chart, type: 'bar', height: 280 };
-  readonly budgetPlotOptions: ApexPlotOptions = { bar: { borderRadius: 3, columnWidth: '60%', groupPadding: 0.1 } };
   readonly budgetColors  = [CHART_PALETTE[0], CHART_PALETTE[4]];
   readonly budgetTooltip: ApexTooltip = { ...baseChartOptions.tooltip, y: { formatter: (v: number) => formatCurrency(v, { code: 'AED' }) } };
   readonly budgetYAxis: ApexYAxis = { labels: { formatter: (v: number) => `${(v / 1_000).toFixed(0)}k`, style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } } };

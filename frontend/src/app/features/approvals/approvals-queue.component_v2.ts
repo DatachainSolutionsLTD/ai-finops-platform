@@ -10,6 +10,9 @@
 //          → AG Grid: priority, title, agent, SLA countdown, impact, status
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { SummaryStatRowComponent } from '@shared/components/summary-stat-row-component.component';
+import { GridShellCardComponent } from '@shared/components/grid-shell-card-component.component';
+import { BulkActionBarComponent } from '@shared/components/bulk-action-bar.component';
 import {
   ChangeDetectionStrategy, Component, computed, inject, signal,
 } from '@angular/core';

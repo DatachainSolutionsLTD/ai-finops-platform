@@ -27,7 +27,7 @@ import { type ViolationListRow, type PolicySeverity, type ViolationStatus, type 
   selector: 'app-policy-violations',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent SummaryStatRowComponent, GridShellCardComponent, BulkActionBarComponent,],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent, SummaryStatRowComponent, GridShellCardComponent, BulkActionBarComponent,],
   templateUrl: './policy-violations.component.html',
   styleUrl:    './policy-violations.component.scss',
 })

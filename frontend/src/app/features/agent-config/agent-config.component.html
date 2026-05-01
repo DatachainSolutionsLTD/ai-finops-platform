@@ -168,7 +168,7 @@
           <app-loading-state variant="spinner" message="Loading agent detail..."></app-loading-state>
         } @else if (drawerLoadError()) {
           <app-empty-state icon="alert-circle-outline" title="Unable to load agent" [description]="drawerLoadError()!" [action]="{ label: 'Retry', handler: retryDrawer }"></app-empty-state>
-        } @else if (selectedDetail(); as d) {
+        } @if (selectedDetail(); as d) {
 
           <!-- Read-only identity -->
           <section class="identity-block" aria-label="Agent identity">

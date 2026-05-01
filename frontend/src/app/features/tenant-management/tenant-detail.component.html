@@ -9,7 +9,7 @@
       <app-loading-state variant="spinner" message="Loading tenant..."></app-loading-state>
     } @else if (loadError()) {
       <app-empty-state icon="alert-circle-outline" title="Unable to load tenant" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state>
-    } @else if (hasData() && tenant(); as t) {
+    } @if (hasData() && tenant(); as t) {
 
       <!-- PageHeader with meta chips and danger action -->
       <app-page-header

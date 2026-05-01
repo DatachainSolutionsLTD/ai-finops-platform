@@ -3,9 +3,7 @@
   <div class="page-container">
     <app-page-header title="Tenant Health" [subtitle]="subtitle()"></app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading tenant health..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load tenant health" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading tenant health..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load tenant health" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <!-- 4-KPI row -->
       <section class="kpi-row" aria-label="Tenant health key metrics">

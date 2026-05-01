@@ -38,7 +38,7 @@ import type {
   ICellRendererParams,
 } from 'ag-grid-community';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries,
   ApexChart,
@@ -77,7 +77,7 @@ import { CHART_PALETTE, SEVERITY_COLORS, baseChartOptions } from '@lib/chart-def
     CommonModule, DecimalPipe,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon,
     AgGridAngular,
-    ChartComponent,
+    NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     TimeRangeSelectorComponent, LoadingStateComponent, EmptyStateComponent,
   ],

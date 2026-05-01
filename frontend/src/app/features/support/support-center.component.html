@@ -67,7 +67,7 @@
                 @for (c of categoryOptions; track c) {
                   <ion-item button (click)="toggleCategoryFilter(c)">
                     <ion-checkbox slot="start" [checked]="categoryFilter().includes(c)" [attr.aria-label]="'Filter by ' + c"></ion-checkbox>
-                    <ion-label>{{ c.replace(/_/g,' ') }}</ion-label>
+                    <ion-label>{{ c.split('_').join(' ') }}</ion-label>
                   </ion-item>
                 }
               </ion-list>
@@ -85,7 +85,7 @@
                 @for (s of statusOptions; track s) {
                   <ion-item button (click)="toggleStatusFilter(s)">
                     <ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox>
-                    <ion-label>{{ s.replace(/_/g,' ') }}</ion-label>
+                    <ion-label>{{ s.split('_').join(' ') }}</ion-label>
                   </ion-item>
                 }
               </ion-list>
@@ -103,13 +103,13 @@
         <div class="active-chips" role="group" aria-label="Active filters">
           @for (c of categoryFilter(); track c) {
             <ion-chip (click)="toggleCategoryFilter(c)" [attr.aria-label]="'Remove filter ' + c">
-              <ion-label>{{ c.replace(/_/g,' ') }}</ion-label>
+              <ion-label>{{ c.split('_').join(' ') }}</ion-label>
               <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
             </ion-chip>
           }
           @for (s of statusFilter(); track s) {
             <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove status filter ' + s">
-              <ion-label>{{ s.replace(/_/g,' ') }}</ion-label>
+              <ion-label>{{ s.split('_').join(' ') }}</ion-label>
               <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
             </ion-chip>
           }

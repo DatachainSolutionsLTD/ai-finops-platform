@@ -24,7 +24,7 @@ import {
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis,
   ApexTooltip, ApexDataLabels, ApexLegend, ApexPlotOptions,
@@ -52,7 +52,7 @@ import {
   imports: [
     CommonModule,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle,
-    AgGridAngular, ChartComponent,
+    AgGridAngular, NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     LoadingStateComponent, EmptyStateComponent,
   ],

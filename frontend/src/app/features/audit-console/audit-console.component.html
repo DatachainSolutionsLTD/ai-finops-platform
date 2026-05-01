@@ -17,14 +17,12 @@
       </section>
     }
 
-    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading audit events..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load audit events" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading audit events..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load audit events" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
       <div class="filter-toolbar" role="toolbar" aria-label="Filter audit events">
         <div class="searchbar-wrap"><ion-searchbar placeholder="Search by action, actor, or target..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search audit log"></ion-searchbar></div>
         <div class="filter-chips" role="group">
           <ion-button id="filter-au-cat" fill="outline" color="medium"><ion-icon name="layers-outline" slot="start" aria-hidden="true"></ion-icon>Category @if (categoryFilter().length > 0) { <span class="filter-count">{{ categoryFilter().length }}</span> }</ion-button>
-          <ion-popover trigger="filter-au-cat" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (c of categoryOptions; track c) { <ion-item button (click)="toggleCategoryFilter(c)"><ion-checkbox slot="start" [checked]="categoryFilter().includes(c)" [attr.aria-label]="'Filter by category ' + c"></ion-checkbox><ion-label>{{ c.replace(/_/g,' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          <ion-popover trigger="filter-au-cat" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (c of categoryOptions; track c) { <ion-item button (click)="toggleCategoryFilter(c)"><ion-checkbox slot="start" [checked]="categoryFilter().includes(c)" [attr.aria-label]="'Filter by category ' + c"></ion-checkbox><ion-label>{{ c.split('_').join(' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
           <ion-button id="filter-au-out" fill="outline" color="medium"><ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>Outcome @if (outcomeFilter().length > 0) { <span class="filter-count">{{ outcomeFilter().length }}</span> }</ion-button>
           <ion-popover trigger="filter-au-out" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (o of outcomeOptions; track o) { <ion-item button (click)="toggleOutcomeFilter(o)"><ion-checkbox slot="start" [checked]="outcomeFilter().includes(o)" [attr.aria-label]="'Filter by outcome ' + o"></ion-checkbox><ion-label>{{ o }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
           @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear filters">Clear all</ion-button> }
@@ -32,7 +30,7 @@
       </div>
       @if (hasActiveFilters()) {
         <div class="active-chips" role="group">
-          @for (c of categoryFilter(); track c) { <ion-chip (click)="toggleCategoryFilter(c)" [attr.aria-label]="'Remove ' + c"><ion-label>{{ c.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (c of categoryFilter(); track c) { <ion-chip (click)="toggleCategoryFilter(c)" [attr.aria-label]="'Remove ' + c"><ion-label>{{ c.split('_').join(' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
           @for (o of outcomeFilter(); track o) { <ion-chip (click)="toggleOutcomeFilter(o)" [attr.aria-label]="'Remove ' + o"><ion-label>{{ o }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
         </div>
       }

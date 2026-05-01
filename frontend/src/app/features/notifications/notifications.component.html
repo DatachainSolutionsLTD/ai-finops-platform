@@ -6,9 +6,7 @@
     <app-page-header title="Notification Settings" subtitle="Configure how and when the platform delivers alerts to your team">
     </app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading notification settings..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load settings" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading notification settings..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load settings" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <!-- Tab nav -->
       <div class="tab-nav" role="tablist" aria-label="Notification settings sections">

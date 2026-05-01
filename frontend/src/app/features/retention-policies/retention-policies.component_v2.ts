@@ -23,7 +23,7 @@ import { type RetentionPolicyRow, type RetentionStatus, type DataCategory, RETEN
 @Component({
   selector: 'app-retention-policies',
   standalone: true, changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent SummaryStatRowComponent, GridShellCardComponent,],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent, SummaryStatRowComponent, GridShellCardComponent,],
   templateUrl: './retention-policies.component.html',
   styleUrl:    './retention-policies.component.scss',
 })

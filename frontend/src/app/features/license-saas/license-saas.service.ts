@@ -5,7 +5,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, delay } from 'rxjs';
-import { type LicenseEntitlementRow, type LicenseSaaSSummary } from '@shared/types/license-saas.types';
+import { type LicenseEntitlementRow, type LicenseSummary } from '@shared/types/license-saas.types';
 import { environment } from '@env/environment';
 
 const CUR = 'AED';
@@ -25,7 +25,7 @@ const MOCK_ROWS: LicenseEntitlementRow[] = [
   { entitlementId:'le-012', vendor:'Dynatrace',   product:'Full Stack Monitoring',    licenseType:'Subscription', licenseMetric:'Per 8GB host/hr', entitledQty:3000, deployedQty:3000, activeQty:1840, utilizationPct:61.3, complianceStatus:'Under_Deployed',annualCost:648_000,   currency:CUR, contractEndDate:'2026-11-30', autoRenewal:true,  renewalUrgency:'Safe',      isByolEligible:false, isAhbEligible:false, businessUnit:'Platform' },
 ];
 
-const MOCK_SUMMARY: LicenseSaaSSummary = {
+const MOCK_SUMMARY: LicenseSummary = {
   totalLicenseSpend: 17_342_400,
   saasSpend:         4_428_000,
   totalWaste:        1_284_600,
@@ -42,8 +42,8 @@ export class LicenseSaaSService {
   list(query: Record<string, unknown>): Observable<{ data: LicenseEntitlementRow[]; pagination: { total: number; page: number; limit: number } }> {
     return of({ data: MOCK_ROWS, pagination: { total: MOCK_ROWS.length, page: 0, limit: 20 } }).pipe(delay(600));
   }
-  // SWAP TO REAL: this.#http.get<LicenseSaaSSummary>(`${environment.apiUrl}/optimize/licenses/summary`)
-  summary(): Observable<LicenseSaaSSummary> {
+  // SWAP TO REAL: this.#http.get<LicenseSummary>(`${environment.apiUrl}/optimize/licenses/summary`)
+  summary(): Observable<LicenseSummary> {
     return of(MOCK_SUMMARY).pipe(delay(400));
   }
 }

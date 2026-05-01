@@ -7,7 +7,7 @@ import { Title } from '@angular/platform-browser';
 import { IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon, ToastController } from '@ionic/angular/standalone';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type { ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexTooltip, ApexDataLabels, ApexStroke, ApexPlotOptions } from 'ng-apexcharts';
 import { startWith, catchError, of } from 'rxjs';
 import { PageHeaderComponent } from '@shared/components/page-header.component';
@@ -24,7 +24,7 @@ import { type TaggingDashboardData, type TagRemediationRow } from '@shared/types
   selector: 'app-tagging-hygiene',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon, AgGridAngular, ChartComponent, PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon, AgGridAngular, NgApexchartsModule, PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent, LoadingStateComponent, EmptyStateComponent],
   templateUrl: './tagging-hygiene.component.html',
   styleUrl:    './tagging-hygiene.component.scss',
 })

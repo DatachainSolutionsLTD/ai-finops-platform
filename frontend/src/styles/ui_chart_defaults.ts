@@ -132,8 +132,8 @@ export interface CurrencyFormatOptions {
  *                                              → "$12,345.67"
  */
 export const formatCurrency = (
-  value: number,
-  opts: CurrencyFormatOptions,
+  value: number = 0,
+  opts: CurrencyFormatOptions = { code: 'USD' },
 ): string => {
   const locale = opts.locale ?? 'en-US';
   const maximumFractionDigits = opts.maximumFractionDigits ?? 0;

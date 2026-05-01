@@ -4,6 +4,7 @@
 // Last verified against tokens + patterns: 2026-04-13
 // Users & Roles — List screen. Tenant Admin scope.
 // Pattern: List — summary row → 2-filter toolbar → AG Grid → Invite modal
+import { relativeTime } from '@lib/utils/date.utils';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -28,7 +29,7 @@ import { type TenantUserRow, type TenantUserRole, type TenantUserStatus, TENANT_
   selector: 'app-users-roles',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, IonModal, IonSelect, IonSelectOption, IonInput, IonSpinner, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent SummaryStatRowComponent, GridShellCardComponent,],
+  imports: [CommonModule, ReactiveFormsModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonSearchbar, IonButton, IonIcon, IonChip, IonLabel, IonPopover, IonList, IonItem, IonCheckbox, IonModal, IonSelect, IonSelectOption, IonInput, IonSpinner, AgGridAngular, PageHeaderComponent, LoadingStateComponent, EmptyStateComponent, SummaryStatRowComponent, GridShellCardComponent,],
   templateUrl: './users-roles.component.html',
   styleUrl:    './users-roles.component.scss',
 })

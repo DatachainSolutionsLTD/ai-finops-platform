@@ -1,0 +1,107 @@
+// FinOps Platform Design System v1.1 — Updated v2
+// Shared library partials now imported via global styles.scss:
+//   @use 'styles/page-container'  — :host, .page-container, .header-actions
+//   @use 'styles/list-chrome'     — .summary-row, .filter-toolbar, .grid-card, .bulk-action-bar
+//   @use 'styles/ag-grid-cells'   — all ::ng-deep cell renderer styles
+//   @use 'styles/modals'          — .modal-shell, .action-footer
+// Only screen-specific overrides remain below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Quick links ───────────────────────────────────────────────────────────────
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--finops-space-4);
+  margin-bottom: var(--finops-space-6);
+  @media (max-width: 992px) { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); }
+}
+.quick-link {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--finops-space-2); padding: var(--finops-space-4);
+  background-color: var(--finops-bg-surface);
+  border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg);
+  text-decoration: none; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+  &:hover { border-color: var(--finops-brand-primary); box-shadow: var(--finops-shadow-md); }
+  &:focus-visible { outline: 2px solid var(--finops-brand-primary); outline-offset: 2px; }
+}
+.ql-icon-wrap {
+  position: relative;
+  ion-icon { font-size: 22px; color: var(--finops-brand-primary); }
+}
+.ql-badge {
+  position: absolute; top: -6px; right: -8px;
+  --background: var(--finops-danger); --color: var(--finops-text-inverse);
+  font-size: var(--finops-text-xs); min-width: 18px; height: 18px; border-radius: var(--finops-radius-full); padding: 0 4px;
+}
+.ql-label { font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); color: var(--finops-text-secondary); text-align: center; }
+
+// ── KPI row ──────────────────────────────────────────────────────────────────
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--finops-space-4); margin-bottom: var(--finops-space-6); @media (max-width: 992px) { grid-template-columns: repeat(2, 1fr); } @media (max-width: 576px) { grid-template-columns: 1fr; } }
+
+// ── Chart card ────────────────────────────────────────────────────────────────
+.chart-card {
+  background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); margin: 0 0 var(--finops-space-6);
+  ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); }
+  ion-card-content{ padding: var(--finops-space-4) var(--finops-space-4) var(--finops-space-6); }
+}
+.chart-legend { display: flex; gap: var(--finops-space-4); margin-bottom: var(--finops-space-3); font-size: var(--finops-text-xs); color: var(--finops-text-tertiary); }
+.legend-actual   { color: var(--finops-brand-primary); font-weight: var(--finops-font-semibold); }
+.legend-budget   { color: var(--finops-warning-dark); }
+.legend-forecast { color: var(--finops-info); }
+
+// ── Alerts card ───────────────────────────────────────────────────────────────
+.alerts-card {
+  background-color: var(--finops-bg-surface); border: 1px solid var(--finops-border-default);
+  border-radius: var(--finops-radius-lg); box-shadow: var(--finops-shadow-sm); margin: 0;
+  ion-card-header { padding: var(--finops-space-5) var(--finops-space-6) 0; display: flex; align-items: center; }
+  ion-card-title  { font-family: var(--finops-font-family); font-size: var(--finops-text-lg); font-weight: var(--finops-font-semibold); color: var(--finops-text-primary); display: flex; align-items: center; gap: var(--finops-space-3); }
+}
+.alert-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; padding: 0 var(--finops-space-1);
+  background-color: var(--finops-danger); color: var(--finops-text-inverse);
+  border-radius: var(--finops-radius-full); font-size: var(--finops-text-xs); font-weight: var(--finops-font-bold);
+}
+.alerts-body { padding: var(--finops-space-3) 0 0; }
+.alert-list  { list-style: none; margin: 0; padding: 0; }
+.alert-item  {
+  display: flex; align-items: stretch; border-bottom: 1px solid var(--finops-border-subtle);
+  &:last-child { border-bottom: none; }
+}
+.alert-severity-bar {
+  width: 4px; flex-shrink: 0; border-radius: var(--finops-radius-sm);
+  margin: var(--finops-space-3) var(--finops-space-3);
+  &.alert-critical { background-color: var(--finops-danger); }
+  &.alert-high     { background-color: var(--finops-warning); }
+  &.alert-medium   { background-color: var(--finops-info); }
+  &.alert-low      { background-color: var(--finops-success); }
+}
+.alert-content { flex: 1; padding: var(--finops-space-3) var(--finops-space-3) var(--finops-space-3) 0; }
+.alert-meta    { display: flex; align-items: center; gap: var(--finops-space-2); margin-bottom: var(--finops-space-1); }
+.alert-type-badge {
+  font-size: var(--finops-text-xs); font-weight: var(--finops-font-medium); text-transform: capitalize;
+  padding: 1px var(--finops-space-2); border-radius: var(--finops-radius-sm);
+  &.type-anomaly    { background-color: var(--finops-warning-subtle);        color: var(--finops-warning-dark); }
+  &.type-budget     { background-color: var(--finops-danger-subtle);         color: var(--finops-danger); }
+  &.type-approval   { background-color: var(--finops-brand-primary-subtle);  color: var(--finops-brand-primary); }
+  &.type-governance { background-color: var(--finops-info-subtle);           color: var(--finops-info); }
+}
+.alert-sev  {
+  font-size: var(--finops-text-xs); font-weight: var(--finops-font-bold);
+  &.alert-critical { color: var(--finops-danger); }
+  &.alert-high     { color: var(--finops-warning-dark); }
+  &.alert-medium   { color: var(--finops-info); }
+}
+.alert-age     { font-size: var(--finops-text-xs); color: var(--finops-text-disabled); margin-left: auto; }
+.alert-message { font-size: var(--finops-text-sm); color: var(--finops-text-primary); margin: 0; line-height: var(--finops-leading-snug); }
+.alert-cta {
+  display: flex; align-items: center; padding: 0 var(--finops-space-4);
+  color: var(--finops-text-tertiary); text-decoration: none;
+  &:hover { color: var(--finops-brand-primary); }
+  &:focus-visible { outline: 2px solid var(--finops-brand-primary); outline-offset: 2px; }
+  ion-icon { font-size: 18px; }
+}

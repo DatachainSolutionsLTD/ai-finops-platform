@@ -8,9 +8,7 @@
       <app-time-range-selector slot="actions" [value]="timeRange()" [options]="timeRangeOptions" (valueChange)="onTimeRangeChange($event)"></app-time-range-selector>
     </app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading rate optimization data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading rate optimization data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <section class="kpi-row" aria-label="Key rate optimization metrics">
         <app-kpi-card label="Commitment coverage" [value]="kpis()!.coverageRate.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.coverageRate.deltaPercent" [deltaDirection]="kpis()!.coverageRate.deltaDirection" [sparklineData]="kpis()!.coverageRate.sparkline" [status]="kpis()!.coverageRate.value >= 80 ? 'success' : kpis()!.coverageRate.value >= 60 ? 'warning' : 'danger'"></app-kpi-card>

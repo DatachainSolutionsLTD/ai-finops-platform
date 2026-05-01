@@ -20,20 +20,14 @@
     <!-- ── Loading ──────────────────────────────────────────────────────── -->
     @if (isLoading()) {
       <app-loading-state variant="skeleton" message="Loading metering data..."></app-loading-state>
-    }
-
-    <!-- ── Error ────────────────────────────────────────────────────────── -->
-    @else if (loadError()) {
+    } @else if (loadError()) {
       <app-empty-state
         icon="alert-circle-outline"
         title="Unable to load metering data"
         [description]="loadError()!"
         [action]="{ label: 'Retry', handler: retry }">
       </app-empty-state>
-    }
-
-    <!-- ── Loaded content ───────────────────────────────────────────────── -->
-    @else if (hasData()) {
+    } @else if (hasData()) {
 
       <!-- KPI Row -->
       <section class="kpi-row" aria-label="Key metering metrics">
@@ -136,7 +130,7 @@
             <ion-card-title>Pipeline status distribution</ion-card-title>
           </ion-card-header>
           <ion-card-content>
-            @if (pipelineSeries().some(v => v > 0)) {
+            @if (pipelineSeries().length > 0) {
               <apx-chart
                 [series]="pipelineSeries()"
                 [chart]="pipelineChart"

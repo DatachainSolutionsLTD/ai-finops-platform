@@ -16,7 +16,7 @@ import {
   IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle,
 } from '@ionic/angular/standalone';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexNonAxisChartSeries, ApexChart,
   ApexXAxis, ApexYAxis, ApexTooltip, ApexPlotOptions,
@@ -43,7 +43,7 @@ import type { TenantHealthData } from '@shared/types/overview.types';
   imports: [
     CommonModule, RouterLink,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle,
-    ChartComponent,
+    NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     LoadingStateComponent, EmptyStateComponent,
   ],

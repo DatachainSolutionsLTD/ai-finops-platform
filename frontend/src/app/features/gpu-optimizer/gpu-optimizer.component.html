@@ -3,9 +3,7 @@
   <div class="page-container">
     <app-page-header title="GPU Optimizer" [subtitle]="subtitle()"></app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading GPU data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load GPU data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading GPU data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load GPU data" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <section class="kpi-row" aria-label="Key GPU optimization metrics">
         <app-kpi-card label="Avg CUDA utilisation" [value]="kpis()!.avgCudaUtilPct.value | number:'1.1-1'" unit="%" [deltaPercent]="kpis()!.avgCudaUtilPct.deltaPercent" [deltaDirection]="kpis()!.avgCudaUtilPct.deltaDirection" [sparklineData]="kpis()!.avgCudaUtilPct.sparkline" [status]="kpis()!.avgCudaUtilPct.value >= 70 ? 'success' : kpis()!.avgCudaUtilPct.value >= 40 ? 'warning' : 'danger'"></app-kpi-card>

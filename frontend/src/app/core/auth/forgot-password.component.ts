@@ -34,7 +34,7 @@ import {
   IonSpinner,
 } from '@ionic/angular/standalone';
 
-import { AuthLayoutComponent } from '../shared/auth-layout.component';
+import { AuthLayoutComponent } from './shared/auth-layout.component';
 import { environment } from '@env/environment';
 
 @Component({

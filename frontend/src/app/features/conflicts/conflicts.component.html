@@ -15,23 +15,21 @@
       </section>
     }
 
-    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading conflicts..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load conflicts" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="spinner" message="Loading conflicts..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load conflicts" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
       <div class="filter-toolbar" role="toolbar" aria-label="Filter conflicts">
         <div class="searchbar-wrap"><ion-searchbar placeholder="Search by agent or resource..." debounce="300" animated="true" [value]="searchText()" (ionInput)="onSearchChange($any($event.detail.value))" aria-label="Search conflicts"></ion-searchbar></div>
         <div class="filter-chips" role="group">
           <ion-button id="filter-cf-type" fill="outline" color="medium"><ion-icon name="git-compare-outline" slot="start" aria-hidden="true"></ion-icon>Type @if (typeFilter().length > 0) { <span class="filter-count">{{ typeFilter().length }}</span> }</ion-button>
-          <ion-popover trigger="filter-cf-type" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (t of typeOptions; track t) { <ion-item button (click)="toggleTypeFilter(t)"><ion-checkbox slot="start" [checked]="typeFilter().includes(t)" [attr.aria-label]="'Filter by type ' + t"></ion-checkbox><ion-label>{{ t.replace(/_/g,' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          <ion-popover trigger="filter-cf-type" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (t of typeOptions; track t) { <ion-item button (click)="toggleTypeFilter(t)"><ion-checkbox slot="start" [checked]="typeFilter().includes(t)" [attr.aria-label]="'Filter by type ' + t"></ion-checkbox><ion-label>{{ t.split('_').join(' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
           <ion-button id="filter-cf-status" fill="outline" color="medium"><ion-icon name="funnel-outline" slot="start" aria-hidden="true"></ion-icon>Status @if (statusFilter().length > 0) { <span class="filter-count">{{ statusFilter().length }}</span> }</ion-button>
-          <ion-popover trigger="filter-cf-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s.replace(/_/g,' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
+          <ion-popover trigger="filter-cf-status" [dismissOnSelect]="false" [showBackdrop]="false"><ng-template><ion-list class="filter-popover-list">@for (s of statusOptions; track s) { <ion-item button (click)="toggleStatusFilter(s)"><ion-checkbox slot="start" [checked]="statusFilter().includes(s)" [attr.aria-label]="'Filter by status ' + s"></ion-checkbox><ion-label>{{ s.split('_').join(' ') }}</ion-label></ion-item> }</ion-list></ng-template></ion-popover>
           @if (hasActiveFilters()) { <ion-button fill="clear" color="medium" (click)="clearFilters()" aria-label="Clear filters">Clear all</ion-button> }
         </div>
       </div>
       @if (hasActiveFilters()) {
         <div class="active-chips" role="group" aria-label="Active filters">
-          @for (t of typeFilter(); track t) { <ion-chip (click)="toggleTypeFilter(t)" [attr.aria-label]="'Remove ' + t"><ion-label>{{ t.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
-          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s.replace(/_/g,' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (t of typeFilter(); track t) { <ion-chip (click)="toggleTypeFilter(t)" [attr.aria-label]="'Remove ' + t"><ion-label>{{ t.split('_').join(' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
+          @for (s of statusFilter(); track s) { <ion-chip (click)="toggleStatusFilter(s)" [attr.aria-label]="'Remove ' + s"><ion-label>{{ s.split('_').join(' ') }}</ion-label><ion-icon name="close-outline" aria-hidden="true"></ion-icon></ion-chip> }
         </div>
       }
       <ion-card class="grid-card">

@@ -7,6 +7,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, delay } from 'rxjs';
 import { type MeteringDashboardData, type MeteringTimeRange } from '@shared/types/metering-engine.types';
 import { environment } from '@env/environment';
+const CUR = 'USD';
 
 function sparks(base: number, len = 8): number[] {
   return Array.from({ length: len }, (_, i) => base + Math.round((Math.random() - 0.5) * base * 0.3 + i * (base * 0.02)));

@@ -19,7 +19,7 @@ import {
   IonButton, IonIcon, IonBadge,
 } from '@ionic/angular/standalone';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis,
   ApexTooltip, ApexDataLabels, ApexStroke, ApexFill, ApexAnnotations,
@@ -46,7 +46,7 @@ import type { MyDashboardData, AlertItem } from '@shared/types/overview.types';
     CommonModule, RouterLink,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle,
     IonButton, IonIcon, IonBadge,
-    ChartComponent,
+    NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, LoadingStateComponent, EmptyStateComponent,
   ],
   templateUrl: './my-dashboard.component.html',

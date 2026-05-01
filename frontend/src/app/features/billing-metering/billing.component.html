@@ -10,9 +10,7 @@
       }
     </app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading billing data..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load billing" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading billing data..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load billing" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <!-- KPI row -->
       <section class="kpi-row" aria-label="Billing key metrics">

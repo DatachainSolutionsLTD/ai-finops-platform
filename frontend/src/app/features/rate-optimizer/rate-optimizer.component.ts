@@ -11,7 +11,7 @@ import { Title } from '@angular/platform-browser';
 import { IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle } from '@ionic/angular/standalone';
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type { ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexTooltip, ApexDataLabels, ApexLegend, ApexPlotOptions } from 'ng-apexcharts';
 import { switchMap, startWith, catchError, of } from 'rxjs';
 import { PageHeaderComponent } from '@shared/components/page-header.component';
@@ -31,7 +31,7 @@ const TIME_RANGE_OPTIONS: RateOptTimeRange[] = ['30d', '90d', '12m'];
   selector: 'app-rate-optimizer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, AgGridAngular, ChartComponent, PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent, TimeRangeSelectorComponent, LoadingStateComponent, EmptyStateComponent],
+  imports: [CommonModule, IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, AgGridAngular, NgApexchartsModule, PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent, TimeRangeSelectorComponent, LoadingStateComponent, EmptyStateComponent],
   templateUrl: './rate-optimizer.component.html',
   styleUrl:    './rate-optimizer.component.scss',
 })
@@ -75,7 +75,6 @@ export class RateOptimizerComponent {
   });
   readonly trendXAxis = computed<ApexXAxis>(() => ({ categories: (this.dashboard()?.savingsTrend ?? []).map(p => p.period), labels: { style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } } }));
   readonly trendChart: ApexChart = { ...baseChartOptions.chart, type: 'bar', height: 280 };
-  readonly trendPlotOptions: ApexPlotOptions = { bar: { borderRadius: 3, columnWidth: '65%', groupPadding: 0.1 } };
   readonly trendColors = [CHART_PALETTE[4], CHART_PALETTE[0]];
   readonly trendTooltip: ApexTooltip = { ...baseChartOptions.tooltip, y: { formatter: (v: number) => formatCurrency(v, { code: 'AED' }) } };
   readonly trendYAxis: ApexYAxis = { labels: { formatter: (v: number) => `${(v/1_000).toFixed(0)}k`, style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } } };

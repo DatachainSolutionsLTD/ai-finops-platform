@@ -7,9 +7,7 @@
     <app-page-header [title]="greeting()" [subtitle]="subtitle()">
     </app-page-header>
 
-    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading your dashboard..."></app-loading-state> }
-    @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load dashboard" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> }
-    @else if (hasData()) {
+    @if (isLoading()) { <app-loading-state variant="skeleton" message="Loading your dashboard..."></app-loading-state> } @else if (loadError()) { <app-empty-state icon="alert-circle-outline" title="Unable to load dashboard" [description]="loadError()!" [action]="{ label: 'Retry', handler: retry }"></app-empty-state> } @else if (hasData()) {
 
       <!-- Quick links row -->
       <section class="quick-links" aria-label="Quick links">

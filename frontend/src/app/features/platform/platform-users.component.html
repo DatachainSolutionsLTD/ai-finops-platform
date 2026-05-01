@@ -70,20 +70,14 @@
         variant="spinner"
         message="Loading platform users...">
       </app-loading-state>
-    }
-
-    <!-- ── Error state ──────────────────────────────────────────────────── -->
-    @else if (loadError()) {
+    } @else if (loadError()) {
       <app-empty-state
         icon="alert-circle-outline"
         title="Unable to load users"
         [description]="loadError()!"
         [action]="{ label: 'Retry', handler: retry }">
       </app-empty-state>
-    }
-
-    <!-- ── Loaded content ───────────────────────────────────────────────── -->
-    @else if (hasData()) {
+    } @else if (hasData()) {
 
       <!-- Filter / Search Toolbar -->
       <div class="filter-toolbar" role="toolbar" aria-label="Filter users">

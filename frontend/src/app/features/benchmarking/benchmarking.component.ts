@@ -24,7 +24,7 @@ import {
 import { AgGridAngular } from 'ag-grid-angular';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 
-import { ChartComponent } from 'ng-apexcharts';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import type {
   ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis,
   ApexStroke, ApexTooltip, ApexDataLabels, ApexPlotOptions,
@@ -58,7 +58,7 @@ const TIME_RANGE_OPTIONS: BenchmarkTimeRange[] = ['30d', '90d', '6m', '12m'];
   imports: [
     CommonModule,
     IonContent, IonCard, IonCardHeader, IonCardContent, IonCardTitle, IonButton, IonIcon,
-    AgGridAngular, ChartComponent,
+    AgGridAngular, NgApexchartsModule,
     PageHeaderComponent, KpiCardComponent, NarrativeBlockComponent,
     TimeRangeSelectorComponent, LoadingStateComponent, EmptyStateComponent,
   ],
@@ -110,7 +110,6 @@ export class BenchmarkingComponent {
     labels: { style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } },
   }));
   readonly ratioChart: ApexChart = { ...baseChartOptions.chart, type: 'bar', height: 300 };
-  readonly ratioPlotOptions: ApexPlotOptions = { bar: { horizontal: true, borderRadius: 3, barHeight: '55%', groupPadding: 0.15 } };
   readonly ratioColors = [CHART_PALETTE[2], CHART_PALETTE[4]];
   readonly ratioTooltip: ApexTooltip = { ...baseChartOptions.tooltip, x: { show: true } };
   readonly ratioYAxis: ApexYAxis = { labels: { style: { fontFamily: 'var(--finops-font-family)', fontSize: '11px' } } };

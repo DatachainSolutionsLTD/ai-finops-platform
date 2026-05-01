@@ -1,6 +1,4 @@
-import { Environment } from './environment';
-
-export const environment: Environment = {
+export const environment = {
   name: 'production',
   apiBaseUrl: 'https://ai-finops-platform.onrender.com/api/v1',
   production: true,
