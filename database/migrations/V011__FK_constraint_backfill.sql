@@ -27,11 +27,11 @@ ALTER TABLE ingestion_run_log
     ADD CONSTRAINT fk_ingestion_run_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
-ALTER TABLE ingestion_connector
+ALTER TABLE data_source_connector
     ADD CONSTRAINT fk_connector_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
-ALTER TABLE raw_cost_record
+ALTER TABLE raw_staging_record
     ADD CONSTRAINT fk_raw_cost_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
@@ -43,7 +43,7 @@ ALTER TABLE normalization_run_log
     ADD CONSTRAINT fk_norm_run_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
-ALTER TABLE service_taxonomy_mapping
+ALTER TABLE service_taxonomy_registry
     ADD CONSTRAINT fk_taxonomy_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
@@ -75,11 +75,11 @@ ALTER TABLE nl_query_log
     ADD CONSTRAINT fk_nl_query_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
-ALTER TABLE proactive_insight
+ALTER TABLE proactive_insight_log
     ADD CONSTRAINT fk_insight_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
-ALTER TABLE anomaly_detection_run
+ALTER TABLE detection_run_log
     ADD CONSTRAINT fk_anom_run_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
@@ -87,7 +87,7 @@ ALTER TABLE anomaly_record
     ADD CONSTRAINT fk_anomaly_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
-ALTER TABLE anomaly_lifecycle_transition
+ALTER TABLE anomaly_lifecycle_log
     ADD CONSTRAINT fk_anom_trans_tenant
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id);
 
