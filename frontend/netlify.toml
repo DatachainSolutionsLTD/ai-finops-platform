@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build:prod"
+  command = "echo 'Using pre-built files'"
   publish = "dist/ai-finops/browser"
 
 [[redirects]]
